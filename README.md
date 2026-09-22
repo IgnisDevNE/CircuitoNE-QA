@@ -4,7 +4,7 @@ Este repositório controla o verificador e a suíte de aceite do [CircuitoNE](ht
 
 - `main` contém o workflow, os scripts e as dependências do verificador.
 - `accepted` contém a suíte ativa em `tests/e2e/` e o estado em `.qa/state.json`.
-- `proposals/source-pr-N` contém apenas mudanças de testes para o PR `N` da aplicação. A aprovação de `magalz` no SHA exato é necessária antes do aceite.
+- `proposals/source-pr-N` contém apenas mudanças de testes para o PR `N` da aplicação. O workflow prepara a branch; o responsável abre o PR no QA e aprova o SHA exato antes do aceite. A política da organização proíbe que o token padrão do Actions crie o PR.
 
 O workflow `Canonical acceptance` recebe uma execução concluída do CI da aplicação, valida sua origem e executa a suíte aprovada contra o container candidato sem entregar segredos ao código candidato. Um GitHub App de QA separado publica o check `canonical-acceptance` no SHA da aplicação. Após merge e nova validação do commit integrado, o workflow promove a suíte revisada para `accepted`.
 

@@ -73,16 +73,9 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
         git(acceptedDir, 'push', 'origin', `HEAD:${ref}`)
       }
     }
-    const pulls = await request(`/repos/${QA}/pulls?state=open&base=accepted&head=IgnisDevNE:${encodeURIComponent(branch)}&per_page=100`, token)
-    if (!pulls.some((pr) => pr.head?.ref === branch && pr.head.repo?.full_name === QA)) {
-      await request(`/repos/${QA}/pulls`, token, 'POST', {
-        title: `Canonical tests for CircuitoNE #${sourcePrText}`,
-        head: branch,
-        base: 'accepted',
-        body: `Proposed from [CircuitoNE #${sourcePrText}](https://github.com/IgnisDevNE/CircuitoNE/pull/${sourcePrText}) at candidate ${candidateSha}. Review the exact test diff and approve before implementation. The QA publisher will promote it only after the application PR is merged and revalidated.`,
-      })
-    }
-    console.log(`QA test proposal ready for source PR #${sourcePrText}; human review required.`)
+    const compareUrl = `https://github.com/${QA}/compare/accepted...${branch}?expand=1`
+    console.log(`QA test branch ready for source PR #${sourcePrText}: ${compareUrl}`)
+    console.log('Open and approve the QA pull request, then rerun source CI. The organization does not permit GITHUB_TOKEN to create pull requests.')
   } catch (error) {
     console.error(error.message)
     process.exitCode = 1
