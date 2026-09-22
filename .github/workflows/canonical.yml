@@ -123,7 +123,7 @@ jobs:
         working-directory: runner
         env:
           QA_TEST_DIR: .qa-suite/tests/e2e
-        run: pnpm test > "$RUNNER_TEMP/canonical-results.json"
+        run: pnpm exec playwright test --reporter=json > "$RUNNER_TEMP/canonical-results.json"
       - name: Reject missing or skipped tests
         run: node runner/scripts/results.mjs "$RUNNER_TEMP/canonical-results.json"
 
