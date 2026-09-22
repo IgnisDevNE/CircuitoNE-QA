@@ -1,0 +1,90 @@
+import { execFileSync } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
+import { needsProposal } from './integrity.mjs'
+
+const QA = 'IgnisDevNE/CircuitoNE-QA'
+const sha = (value) => typeof value === 'string' && /^[0-9a-f]{40,64}$/.test(value)
+const git = (cwd, ...args) => execFileSync('git', ['-C', cwd, ...args], { stdio: 'pipe', encoding: 'utf8', maxBuffer: 1024 * 1024 }).trim()
+
+async function request(path, token, method = 'GET', body) {
+  const response = await fetch(`https://api.github.com${path}`, {
+    method,
+    headers: { Accept: 'application/vnd.github+json', Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json', 'X-GitHub-Api-Version': '2026-03-10' },
+    body: body && JSON.stringify(body),
+    signal: AbortSignal.timeout(15000),
+  })
+  if (!response.ok) throw new Error(`GitHub API rejected QA proposal (HTTP ${response.status})`)
+  return response.json()
+}
+
+export async function closeObsoleteProposal(sourcePr, send) {
+  const branch = `proposals/source-pr-${sourcePr}`
+  const pulls = await send(`/repos/${QA}/pulls?state=open&base=accepted&head=IgnisDevNE:${encodeURIComponent(branch)}&per_page=100`, 'GET')
+  if (!Array.isArray(pulls)) throw new Error('Invalid QA proposal list')
+  for (const pr of pulls) {
+    if (pr.state === 'open' && pr.head?.ref === branch && pr.head.repo?.full_name === QA && Number.isSafeInteger(pr.number)) {
+      await send(`/repos/${QA}/pulls/${pr.number}`, 'PATCH', { state: 'closed' })
+    }
+  }
+}
+
+export function proposalNeedsRefresh(candidateDir, candidateSha, acceptedDir, acceptedSha, previousSha) {
+  try {
+    git(acceptedDir, 'merge-base', '--is-ancestor', acceptedSha, previousSha)
+  } catch {
+    return true
+  }
+  return needsProposal(candidateDir, candidateSha, acceptedDir, previousSha)
+}
+
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  try {
+    const [acceptedDir, acceptedSha, candidateDir, candidateSha, sourcePrText] = process.argv.slice(2)
+    const token = process.env.GITHUB_TOKEN
+    if (!acceptedDir || !candidateDir || !sha(acceptedSha) || !sha(candidateSha) ||
+        !/^[1-9][0-9]*$/.test(sourcePrText || '') || !token) throw new Error('Invalid QA staging input')
+    if (git(acceptedDir, 'rev-parse', 'HEAD') !== acceptedSha) throw new Error('Accepted QA checkout changed')
+    if (!needsProposal(candidateDir, candidateSha, acceptedDir, acceptedSha)) {
+      await closeObsoleteProposal(Number(sourcePrText), (path, method, body) => request(path, token, method, body))
+      console.log('Candidate uses the accepted test tree; no proposal needed.')
+      process.exit(0)
+    }
+    const branch = `proposals/source-pr-${sourcePrText}`
+    const ref = `refs/heads/${branch}`
+    const remote = git(acceptedDir, 'ls-remote', 'origin', ref)
+    const previous = remote ? remote.split(/\s/)[0] : null
+    if (previous && !sha(previous)) throw new Error('Invalid QA proposal ref')
+    let changed = true
+    if (previous) {
+      git(acceptedDir, 'fetch', '--no-tags', 'origin', previous)
+      changed = proposalNeedsRefresh(candidateDir, candidateSha, acceptedDir, acceptedSha, previous)
+    }
+    if (changed) {
+      git(acceptedDir, 'switch', '-C', branch, acceptedSha)
+      git(acceptedDir, 'fetch', '--no-tags', 'https://github.com/IgnisDevNE/CircuitoNE.git', candidateSha)
+      git(acceptedDir, 'rm', '-r', '-q', '--', 'tests/e2e')
+      git(acceptedDir, 'checkout', candidateSha, '--', 'tests/e2e')
+      git(acceptedDir, '-c', 'user.name=github-actions[bot]', '-c', 'user.email=41898282+github-actions[bot]@users.noreply.github.com',
+        'commit', '-qm', `Propose canonical tests for CircuitoNE #${sourcePrText}`)
+      if (previous) {
+        git(acceptedDir, 'push', 'origin', `HEAD:${ref}`, `--force-with-lease=${ref}:${previous}`)
+      } else {
+        git(acceptedDir, 'push', 'origin', `HEAD:${ref}`)
+      }
+    }
+    const pulls = await request(`/repos/${QA}/pulls?state=open&base=accepted&head=IgnisDevNE:${encodeURIComponent(branch)}&per_page=100`, token)
+    if (!pulls.some((pr) => pr.head?.ref === branch && pr.head.repo?.full_name === QA)) {
+      await request(`/repos/${QA}/pulls`, token, 'POST', {
+        title: `Canonical tests for CircuitoNE #${sourcePrText}`,
+        head: branch,
+        base: 'accepted',
+        body: `Proposed from [CircuitoNE #${sourcePrText}](https://github.com/IgnisDevNE/CircuitoNE/pull/${sourcePrText}) at candidate ${candidateSha}. Review the exact test diff and approve before implementation. The QA publisher will promote it only after the application PR is merged and revalidated.`,
+      })
+    }
+    console.log(`QA test proposal ready for source PR #${sourcePrText}; human review required.`)
+  } catch (error) {
+    console.error(error.message)
+    process.exitCode = 1
+  }
+}

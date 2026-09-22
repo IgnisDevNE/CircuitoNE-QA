@@ -1,0 +1,12 @@
+{
+  "name": "circuitone-qa",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.34.3",
+  "scripts": {
+    "test": "playwright test --reporter=json"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0"
+  }
+}
