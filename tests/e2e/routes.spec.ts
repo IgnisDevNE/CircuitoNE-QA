@@ -95,13 +95,13 @@ test('rota desconhecida permite voltar ao início', async ({ page }) => {
   await expect(page).toHaveTitle('Início · CIRCUITO NE')
 })
 
-test('parâmetro com escape inválido apresenta 404 sem quebrar a página', async ({ page }) => {
+test('parâmetro com escape inválido é rejeitado sem quebrar a página', async ({ page }) => {
   const errors: string[] = []
   page.on('pageerror', error => errors.push(error.message))
-  // O preview rejeita a URL HTTP antes de carregar React. O histórico ainda
-  // pode apresentar esse pathname ao roteador, que precisa permanecer funcional.
+  // O preview responde 404; o Caddy de produção responde 400 para HTTP malformado.
+  // O histórico ainda pode apresentar esse pathname ao roteador React.
   const response = await page.goto('/artistas/%E0%A4%A')
-  expect(response?.status()).toBe(404)
+  expect(response?.status()).toBe(process.env.QA_TEST_DIR ? 400 : 404)
   await page.goto('/artistas')
   await page.evaluate(() => {
     window.history.pushState({}, '', '/artistas/%E0%A4%A')
