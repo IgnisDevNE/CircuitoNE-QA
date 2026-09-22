@@ -34,11 +34,17 @@ export async function resolveSourceRun(runId, mode, getJson) {
   }
   if (run.head_sha !== main) throw new Error('Source main advanced before promotion')
   const matches = pulls.filter((pr) => pr.state === 'closed' && pr.merged_at &&
-    pr.merge_commit_sha === run.head_sha && pr.base?.ref === 'main' && Number.isSafeInteger(pr.number))
+    pr.base?.ref === 'main' && pr.head?.repo?.full_name === SOURCE &&
+    sha(pr.head.sha) && Number.isSafeInteger(pr.number))
   if (matches.length !== 1) throw new Error('No exact merged PR for source SHA')
   const commit = await getJson(`/repos/${SOURCE}/commits/${run.head_sha}`)
   const previousMain = commit.parents?.[0]?.sha
   if (!sha(previousMain)) throw new Error('Source commit has no prior main')
+  const head = await getJson(`/repos/${SOURCE}/commits/${matches[0].head.sha}`)
+  // Scoped tokens omit merge_commit_sha; the merged tree must equal the reviewed PR tree.
+  if (!sha(commit.commit?.tree?.sha) || commit.commit.tree.sha !== head.commit?.tree?.sha) {
+    throw new Error('Source merge tree does not match the PR head')
+  }
   return { mode, sourceSha: run.head_sha, sourceMainSha: previousMain, sourcePr: matches[0].number, runId: run.id, sourceCiConclusion: run.conclusion }
 }
 
