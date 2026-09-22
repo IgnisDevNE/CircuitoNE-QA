@@ -15,3 +15,12 @@ test('reports the failed canonical case without accepting its result', () => {
   const failed = { suites: [{ specs: [{ title: 'rota pública /', tests: [{ results: [{ status: 'failed', errors: [{ message: 'Expected title Início' }] }] }] }] }] }
   assert.throws(() => assertNoSkippedTests(failed), /rota pública \/.*Expected title Início/)
 })
+
+test('reports all failed cases from the same run so the accepted suite can be fixed together', () => {
+  const failed = { suites: [{ specs: [
+    { title: 'primeira rota', tests: [{ results: [{ status: 'failed' }] }] },
+    { title: 'segunda rota', tests: [{ results: [{ status: 'failed' }] }] },
+  ] }] }
+  assert.throws(() => assertNoSkippedTests(failed), (error) =>
+    error.message.includes('primeira rota') && error.message.includes('segunda rota'))
+})

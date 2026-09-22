@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 export function assertNoSkippedTests(report) {
   if (!Array.isArray(report?.suites)) throw new Error('Invalid Playwright report')
   let count = 0
+  const failures = []
   function visit(suite) {
     for (const spec of suite.specs ?? []) {
       for (const test of spec.tests ?? []) {
@@ -14,13 +15,14 @@ export function assertNoSkippedTests(report) {
         if (test.expectedStatus && test.expectedStatus !== 'passed') throw new Error('Canonical test expected to fail')
         if (test.results?.length !== 1 || test.results[0].status !== 'passed') {
           const detail = String(test.results?.[0]?.errors?.[0]?.message || '').replace(/[\x00-\x1f]+/g, ' ').slice(0, 300)
-          throw new Error(`Canonical test failed or did not run: ${spec.title || 'unknown case'} ${detail}`)
+          if (failures.length < 10) failures.push(`${spec.title || 'unknown case'} ${detail}`)
         }
       }
     }
     for (const child of suite.suites ?? []) visit(child)
   }
   for (const suite of report.suites) visit(suite)
+  if (failures.length) throw new Error(`Canonical tests failed or did not run:\n${failures.join('\n')}`)
   if (!count) throw new Error('No tests executed')
   return count
 }
