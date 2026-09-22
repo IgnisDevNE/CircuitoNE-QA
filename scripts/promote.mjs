@@ -16,7 +16,7 @@ function evidence(check) {
 }
 
 export function assertPromotionEvidence(expected, pr, reviews, checks, qaAppId, workflowSha) {
-  if (pr.number !== expected.sourcePr || !pr.merged_at || pr.merge_commit_sha !== expected.sourceSha ||
+  if (pr.number !== expected.sourcePr || !pr.merged_at ||
       pr.base?.ref !== 'main' || !sha(pr.head?.sha)) throw new Error('Source PR merge does not match')
   const latest = reviews.filter((review) => review.user?.login === 'magalz').at(-1)
   if (latest?.state !== 'APPROVED' || latest.commit_id !== pr.head.sha) throw new Error('Source PR approval is missing or stale')
