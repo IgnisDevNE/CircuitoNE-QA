@@ -1,5 +1,5 @@
-import { sign } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
+import { qaAppToken } from './app-token.mjs'
 import { chooseApprovedSuite } from './proposal.mjs'
 import { resolveSourceRun } from './resolve.mjs'
 
@@ -23,22 +23,6 @@ async function request(path, token, method = 'GET', body) {
   })
   if (!response.ok) throw new Error(`GitHub API rejected QA publication (HTTP ${response.status})`)
   return response.status === 204 ? null : response.json()
-}
-
-async function qaAppToken() {
-  const { QA_APP_ID, QA_APP_INSTALLATION_ID, QA_APP_PRIVATE_KEY } = process.env
-  if (!/^[1-9][0-9]*$/.test(QA_APP_ID || '') || !/^[1-9][0-9]*$/.test(QA_APP_INSTALLATION_ID || '') || !QA_APP_PRIVATE_KEY) {
-    throw new Error('QA App credentials are missing')
-  }
-  const now = Math.floor(Date.now() / 1000)
-  const encode = (data) => Buffer.from(JSON.stringify(data)).toString('base64url')
-  const unsigned = `${encode({ alg: 'RS256', typ: 'JWT' })}.${encode({ iat: now - 60, exp: now + 540, iss: QA_APP_ID })}`
-  const jwt = `${unsigned}.${sign('RSA-SHA256', Buffer.from(unsigned), QA_APP_PRIVATE_KEY).toString('base64url')}`
-  const issued = await request(`/app/installations/${QA_APP_INSTALLATION_ID}/access_tokens`, jwt, 'POST', {
-    repository_ids: [SOURCE_REPOSITORY_ID], permissions: { checks: 'write', metadata: 'read' },
-  })
-  if (typeof issued?.token !== 'string' || !(Date.parse(issued.expires_at) > Date.now())) throw new Error('Invalid QA App token')
-  return issued.token
 }
 
 async function currentAcceptance(expected, token) {
@@ -69,7 +53,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     } catch (error) {
       console.error(`QA revalidation failed: ${error.message}`)
     }
-    const token = await qaAppToken()
+    const token = await qaAppToken(SOURCE_REPOSITORY_ID, { checks: 'write' })
     await request(`/repos/${SOURCE}/check-runs`, token, 'POST', {
       name: 'canonical-acceptance', head_sha: sourceSha, status: 'completed', conclusion,
       details_url: process.env.QA_RUN_URL,

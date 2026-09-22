@@ -19,6 +19,7 @@ jobs:
   resolve:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    environment: QA Publisher
     permissions:
       contents: write
       pull-requests: write
@@ -63,6 +64,9 @@ jobs:
         if: ${{ inputs.mode == 'accept' }}
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          QA_APP_ID: ${{ secrets.QA_APP_ID }}
+          QA_APP_INSTALLATION_ID: ${{ secrets.QA_APP_INSTALLATION_ID }}
+          QA_APP_PRIVATE_KEY: ${{ secrets.QA_APP_PRIVATE_KEY }}
         run: node runner/scripts/stage.mjs accepted '${{ steps.accepted.outputs.sha }}' candidate '${{ steps.source.outputs.sourceSha }}' '${{ steps.source.outputs.sourcePr }}'
       - name: Resolve reviewed test proposal
         id: proposal

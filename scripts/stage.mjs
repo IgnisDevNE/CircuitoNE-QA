@@ -1,8 +1,10 @@
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
+import { qaAppToken } from './app-token.mjs'
 import { needsProposal } from './integrity.mjs'
 
 const QA = 'IgnisDevNE/CircuitoNE-QA'
+const QA_REPOSITORY_ID = 1382208661
 const sha = (value) => typeof value === 'string' && /^[0-9a-f]{40,64}$/.test(value)
 const git = (cwd, ...args) => execFileSync('git', ['-C', cwd, ...args], { stdio: 'pipe', encoding: 'utf8', maxBuffer: 1024 * 1024 }).trim()
 
@@ -27,6 +29,26 @@ export async function closeObsoleteProposal(sourcePr, send) {
       await send(`/repos/${QA}/pulls/${pr.number}`, 'PATCH', { state: 'closed' })
     }
   }
+}
+
+export async function ensureProposal(sourcePr, sourceSha, acceptedSha, send) {
+  const branch = `proposals/source-pr-${sourcePr}`
+  const pulls = await send(`/repos/${QA}/pulls?state=open&base=accepted&head=IgnisDevNE:${encodeURIComponent(branch)}&per_page=100`, 'GET')
+  if (!Array.isArray(pulls)) throw new Error('Invalid QA proposal list')
+  const existing = pulls.find((pr) => pr.state === 'open' && pr.head?.ref === branch &&
+    pr.head.repo?.full_name === QA && pr.base?.ref === 'accepted')
+  if (existing) {
+    if (existing.user?.login !== 'circuitone-qa-publisher[bot]') throw new Error('QA proposal must be opened by the QA App')
+    return existing.html_url
+  }
+  const created = await send(`/repos/${QA}/pulls`, 'POST', {
+    title: `Canonical tests for CircuitoNE #${sourcePr}`,
+    head: branch,
+    base: 'accepted',
+    body: `Source PR: https://github.com/IgnisDevNE/CircuitoNE/pull/${sourcePr}\nSource commit: ${sourceSha}\nAccepted suite: ${acceptedSha}\n\nReview the test changes and approve this QA PR before rerunning source CI.`,
+  })
+  if (typeof created?.html_url !== 'string') throw new Error('Invalid QA proposal response')
+  return created.html_url
 }
 
 export function proposalNeedsRefresh(candidateDir, candidateSha, acceptedDir, acceptedSha, previousSha) {
@@ -73,9 +95,10 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
         git(acceptedDir, 'push', 'origin', `HEAD:${ref}`)
       }
     }
-    const compareUrl = `https://github.com/${QA}/compare/accepted...${branch}?expand=1`
-    console.log(`QA test branch ready for source PR #${sourcePrText}: ${compareUrl}`)
-    console.log('Open and approve the QA pull request, then rerun source CI. The organization does not permit GITHUB_TOKEN to create pull requests.')
+    const appToken = await qaAppToken(QA_REPOSITORY_ID, { pull_requests: 'write' })
+    const proposalUrl = await ensureProposal(Number(sourcePrText), candidateSha, acceptedSha,
+      (path, method, body) => request(path, appToken, method, body))
+    console.log(`QA proposal for source PR #${sourcePrText}: ${proposalUrl}`)
   } catch (error) {
     console.error(error.message)
     process.exitCode = 1
