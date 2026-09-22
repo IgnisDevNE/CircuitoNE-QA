@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
-import { assertCanonicalTests, assertCandidateIncludesBase, assertProposalOnlyTests, needsProposal } from '../scripts/integrity.mjs'
+import { assertAcceptedState, assertCanonicalTests, assertCandidateIncludesBase, assertProposalOnlyTests, needsProposal } from '../scripts/integrity.mjs'
 import { proposalNeedsRefresh } from '../scripts/stage.mjs'
 
 const git = (cwd, ...args) => execFileSync('git', args, { cwd, stdio: 'pipe' }).toString().trim()
@@ -39,6 +39,24 @@ test('accepts only the exact canonical test tree, including filenames', () => {
   } finally {
     rmSync(qa.root, { recursive: true, force: true })
     rmSync(candidate.root, { recursive: true, force: true })
+  }
+})
+
+test('rejects an accepted branch whose tests changed without promotion', () => {
+  const qa = repository({ 'tests/e2e/rule.spec.ts': 'old\n', '.qa/state.json': '{}\n' })
+  try {
+    const testTree = git(qa.root, 'rev-parse', `${qa.sha}:tests/e2e`)
+    writeFileSync(join(qa.root, '.qa/state.json'), JSON.stringify({ test_tree: testTree }) + '\n')
+    git(qa.root, 'add', '.')
+    git(qa.root, 'commit', '-qm', 'record accepted tree')
+    const accepted = git(qa.root, 'rev-parse', 'HEAD')
+    assert.deepEqual(assertAcceptedState(qa.root, accepted), { test_tree: testTree })
+    writeFileSync(join(qa.root, 'tests/e2e/rule.spec.ts'), 'weakened\n')
+    git(qa.root, 'add', '.')
+    git(qa.root, 'commit', '-qm', 'unreviewed merge')
+    assert.throws(() => assertAcceptedState(qa.root, git(qa.root, 'rev-parse', 'HEAD')), /accepted.*tree/i)
+  } finally {
+    rmSync(qa.root, { recursive: true, force: true })
   }
 })
 

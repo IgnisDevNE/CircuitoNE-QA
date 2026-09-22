@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { qaAppToken } from './app-token.mjs'
-import { needsProposal } from './integrity.mjs'
+import { assertAcceptedState, needsProposal } from './integrity.mjs'
 
 const QA = 'IgnisDevNE/CircuitoNE-QA'
 const QA_REPOSITORY_ID = 1382208661
@@ -67,6 +67,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     if (!acceptedDir || !candidateDir || !sha(acceptedSha) || !sha(candidateSha) ||
         !/^[1-9][0-9]*$/.test(sourcePrText || '') || !token) throw new Error('Invalid QA staging input')
     if (git(acceptedDir, 'rev-parse', 'HEAD') !== acceptedSha) throw new Error('Accepted QA checkout changed')
+    assertAcceptedState(acceptedDir, acceptedSha)
     if (!needsProposal(candidateDir, candidateSha, acceptedDir, acceptedSha)) {
       await closeObsoleteProposal(Number(sourcePrText), (path, method, body) => request(path, token, method, body))
       console.log('Candidate uses the accepted test tree; no proposal needed.')
@@ -95,7 +96,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
         git(acceptedDir, 'push', 'origin', `HEAD:${ref}`)
       }
     }
-    const appToken = await qaAppToken(QA_REPOSITORY_ID, { pull_requests: 'write' })
+    const appToken = await qaAppToken(QA_REPOSITORY_ID, { pull_requests: 'write', contents: 'read' })
     const proposalUrl = await ensureProposal(Number(sourcePrText), candidateSha, acceptedSha,
       (path, method, body) => request(path, appToken, method, body))
     console.log(`QA proposal for source PR #${sourcePrText}: ${proposalUrl}`)

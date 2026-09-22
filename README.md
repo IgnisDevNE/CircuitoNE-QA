@@ -8,4 +8,6 @@ Este repositório controla o verificador e a suíte de aceite do [CircuitoNE](ht
 
 O workflow `Canonical acceptance` recebe uma execução concluída do CI da aplicação, valida sua origem e executa a suíte aprovada contra o container candidato sem entregar segredos ao código candidato. Um GitHub App de QA separado publica o check `canonical-acceptance` no SHA da aplicação. Após merge e nova validação do commit integrado, o workflow promove a suíte revisada para `accepted`.
 
-O check só se torna obrigatório depois da configuração do App de QA, dos environments e da proteção de `main` nos dois repositórios, além dos ensaios positivos e negativos da [issue #31](https://github.com/IgnisDevNE/CircuitoNE/issues/31). Antes disso, este repositório é uma preparação, não um gate ativo.
+O QA é privado e o App implementador não está instalado nele. O plano GitHub atual não oferece proteção de branches para repositórios privados (HTTP 403). Por isso, o estado em `accepted` registra a árvore Git dos testes: um merge acidental que altere só os testes faz o aceite falhar. Esse registro detecta desvios acidentais; não substitui revisão independente nem impede um administrador com escrita de alterar estado e testes juntos. A [issue #31](https://github.com/IgnisDevNE/CircuitoNE/issues/31) acompanha essa limitação e a retirada das credenciais humanas do ambiente implementador.
+
+O check só se torna obrigatório depois dos ensaios positivos e negativos da #31 e da configuração do App QA e dos environments. Antes disso, este repositório é uma preparação, não um gate ativo.

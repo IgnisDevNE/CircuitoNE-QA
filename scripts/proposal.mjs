@@ -1,4 +1,5 @@
-import { appendFileSync, readFileSync } from 'node:fs'
+import { appendFileSync } from 'node:fs'
+import { assertAcceptedState } from './integrity.mjs'
 import { fileURLToPath } from 'node:url'
 
 const QA = 'IgnisDevNE/CircuitoNE-QA'
@@ -37,7 +38,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     const [sourcePrText, sourceMainSha, acceptedSha, acceptedDir, mode, sourceSha] = process.argv.slice(2)
     const token = process.env.GITHUB_TOKEN
     if (!token || !process.env.GITHUB_OUTPUT || !acceptedDir) throw new Error('QA workflow context missing')
-    const state = JSON.parse(readFileSync(`${acceptedDir}/.qa/state.json`, 'utf8'))
+    const state = assertAcceptedState(acceptedDir, acceptedSha)
     if (!sha(sourceMainSha) || !sha(sourceSha)) throw new Error('Invalid source SHA')
     const status = acceptedState(state, mode, sourceSha, sourceMainSha, Number(sourcePrText))
     const getJson = async (path) => {

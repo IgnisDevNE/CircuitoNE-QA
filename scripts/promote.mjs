@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { assertProposalOnlyTests } from './integrity.mjs'
+import { assertAcceptedState, assertProposalOnlyTests } from './integrity.mjs'
 import { chooseApprovedSuite } from './proposal.mjs'
 import { resolveSourceRun } from './resolve.mjs'
 
@@ -56,7 +56,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
       throw new Error('Source merge advanced during promotion')
     }
     if (git(acceptedDir, 'rev-parse', 'HEAD') !== acceptedSha) throw new Error('Accepted QA checkout changed')
-    const state = JSON.parse(readFileSync(`${acceptedDir}/.qa/state.json`, 'utf8'))
+    const state = assertAcceptedState(acceptedDir, acceptedSha)
     if (state.source_main_sha !== sourceMainSha) throw new Error('Promotion predecessor is not accepted')
     const proposal = await chooseApprovedSuite(expected.sourcePr, acceptedSha, get)
     if (proposal.suiteSha !== suiteSha) throw new Error('QA proposal changed during promotion')
@@ -71,6 +71,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
       git(acceptedDir, 'checkout', suiteSha, '--', 'tests/e2e')
     }
     writeFileSync(`${acceptedDir}/.qa/state.json`, JSON.stringify({
+      test_tree: git(acceptedDir, 'rev-parse', `${git(acceptedDir, 'write-tree')}:tests/e2e`),
       source_main_sha: sourceSha,
       promoted_source_pr: expected.sourcePr,
       promoted_suite_sha: suiteSha,
