@@ -10,3 +10,8 @@ test('requires actual successful test execution', () => {
   assert.throws(() => assertNoSkippedTests(report(['skipped'])), /skipped/i)
   assert.throws(() => assertNoSkippedTests(report(['failed'])), /failed/i)
 })
+
+test('reports the failed canonical case without accepting its result', () => {
+  const failed = { suites: [{ specs: [{ title: 'rota pública /', tests: [{ results: [{ status: 'failed', errors: [{ message: 'Expected title Início' }] }] }] }] }] }
+  assert.throws(() => assertNoSkippedTests(failed), /rota pública \/.*Expected title Início/)
+})

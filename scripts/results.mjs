@@ -13,7 +13,8 @@ export function assertNoSkippedTests(report) {
         }
         if (test.expectedStatus && test.expectedStatus !== 'passed') throw new Error('Canonical test expected to fail')
         if (test.results?.length !== 1 || test.results[0].status !== 'passed') {
-          throw new Error('Canonical test failed or did not run')
+          const detail = String(test.results?.[0]?.errors?.[0]?.message || '').replace(/[\x00-\x1f]+/g, ' ').slice(0, 300)
+          throw new Error(`Canonical test failed or did not run: ${spec.title || 'unknown case'} ${detail}`)
         }
       }
     }
