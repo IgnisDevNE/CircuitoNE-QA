@@ -3,6 +3,16 @@ import { fileURLToPath } from 'node:url'
 
 const ROOT = 'tests/e2e/'
 
+export function assertAcceptedState(repo, commit) {
+  if (!/^[0-9a-f]{40,64}$/.test(commit)) throw new Error('Invalid accepted commit SHA')
+  const state = JSON.parse(execFileSync('git', ['-C', repo, 'show', `${commit}:.qa/state.json`], { encoding: 'utf8' }))
+  if (!/^[0-9a-f]{40,64}$/.test(state.test_tree || '') ||
+      execFileSync('git', ['-C', repo, 'rev-parse', `${commit}:tests/e2e`], { encoding: 'utf8' }).trim() !== state.test_tree) {
+    throw new Error('Accepted test tree differs from the promotion record')
+  }
+  return state
+}
+
 function inventory(repo, commit) {
   if (!/^[0-9a-f]{40,64}$/.test(commit)) throw new Error('Invalid commit SHA')
   const output = execFileSync('git', ['-C', repo, 'ls-tree', '-r', '-z', '--full-tree', commit, '--', ROOT], {
