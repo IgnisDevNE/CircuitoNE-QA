@@ -15,5 +15,5 @@ test('pins pnpm before installing the trusted runner from a nested checkout', ()
 
 test('prints canonical report diagnostics and preserves the browser runner exit status', () => {
   const workflow = readFileSync(new URL('../.github/workflows/canonical.yml', import.meta.url), 'utf8')
-  assert.match(workflow, /status=\$\?\n\s+set -e\n\s+node runner\/scripts\/results\.mjs "\$RUNNER_TEMP\/canonical-results\.json"\n\s+exit "\$status"/)
+  assert.match(workflow, /status=\$\?\n\s+set -e\n\s+node scripts\/results\.mjs "\$RUNNER_TEMP\/canonical-results\.json"\n\s+exit "\$status"/)
 })

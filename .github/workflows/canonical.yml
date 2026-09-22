@@ -134,7 +134,7 @@ jobs:
           pnpm exec playwright test --reporter=json > "$RUNNER_TEMP/canonical-results.json"
           status=$?
           set -e
-          node runner/scripts/results.mjs "$RUNNER_TEMP/canonical-results.json"
+          node scripts/results.mjs "$RUNNER_TEMP/canonical-results.json"
           exit "$status"
 
   publish:
