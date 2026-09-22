@@ -15,12 +15,12 @@ const checks = [{ id: 10, name: 'canonical-acceptance', app: { id: 999 }, head_s
   status: 'completed', conclusion: 'success', external_id: `run=122;source=${C};suite=${Q};accepted=${S};workflow=${W}` }]
 
 test('requires independent check and approval for the exact merged content', () => {
-  assert.doesNotThrow(() => assertPromotionEvidence(expected, pr, reviews, checks, 999, W))
-  assert.throws(() => assertPromotionEvidence(expected, pr, reviews, [{ ...checks[0], app: { id: 5028495 } }], 999, W), /QA App/i)
-  assert.throws(() => assertPromotionEvidence(expected, pr, [{ ...reviews[0], commit_id: S }], checks, 999, W), /approval/i)
-  assert.throws(() => assertPromotionEvidence(expected, { ...pr, number: 53 }, reviews, checks, 999, W), /merge/i)
-  assert.throws(() => assertPromotionEvidence(expected, pr, reviews, checks, 999, 'f'.repeat(40)), /check/i)
+  assert.equal(assertPromotionEvidence(expected, pr, reviews, checks, 999), W)
+  assert.throws(() => assertPromotionEvidence(expected, pr, reviews, [{ ...checks[0], app: { id: 5028495 } }], 999), /QA App/i)
+  assert.throws(() => assertPromotionEvidence(expected, pr, [{ ...reviews[0], commit_id: S }], checks, 999), /approval/i)
+  assert.throws(() => assertPromotionEvidence(expected, { ...pr, number: 53 }, reviews, checks, 999), /merge/i)
+  assert.throws(() => assertPromotionEvidence(expected, pr, reviews, [{ ...checks[0], external_id: checks[0].external_id.replace(W, 'invalid') }], 999), /check/i)
   assert.throws(() => assertPromotionEvidence(expected, pr, reviews, [
     ...checks, { ...checks[0], id: 11, conclusion: 'failure' },
-  ], 999, W), /check/i)
+  ], 999), /check/i)
 })
