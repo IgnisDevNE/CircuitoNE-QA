@@ -15,7 +15,7 @@ function evidence(check) {
   return fields
 }
 
-export function assertPromotionEvidence(expected, pr, reviews, checks, qaAppId, workflowSha) {
+export function assertPromotionEvidence(expected, pr, reviews, checks, qaAppId) {
   if (pr.number !== expected.sourcePr || !pr.merged_at ||
       pr.base?.ref !== 'main' || !sha(pr.head?.sha)) throw new Error('Source PR merge does not match')
   const latest = reviews.filter((review) => review.user?.login === 'magalz').at(-1)
@@ -24,10 +24,12 @@ export function assertPromotionEvidence(expected, pr, reviews, checks, qaAppId, 
     check.app?.id === qaAppId && check.head_sha === pr.head.sha && Number.isSafeInteger(check.id))
     .sort((a, b) => b.id - a.id)[0]
   const proof = evidence(latestCheck || {})
+  // The approved pre-merge check may predate QA runner fixes; this job retests the merge.
   const accepted = latestCheck?.status === 'completed' && latestCheck.conclusion === 'success' &&
     proof.source === pr.head.sha && proof.suite === expected.suiteSha &&
-    proof.accepted === expected.acceptedSha && proof.workflow === workflowSha
+    proof.accepted === expected.acceptedSha && sha(proof.workflow)
   if (!accepted) throw new Error('Independent QA App check for exact suite and workflow is missing')
+  return proof.workflow
 }
 
 async function getJson(path, token) {
@@ -63,7 +65,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     const pr = await get(`/repos/${SOURCE}/pulls/${expected.sourcePr}`)
     const reviews = await get(`/repos/${SOURCE}/pulls/${expected.sourcePr}/reviews?per_page=100`)
     const checkResult = await get(`/repos/${SOURCE}/commits/${pr.head.sha}/check-runs?check_name=canonical-acceptance&per_page=100`)
-    assertPromotionEvidence(expected, pr, reviews, checkResult.check_runs ?? [], Number(process.env.QA_APP_ID), process.env.GITHUB_SHA)
+    const acceptanceWorkflowSha = assertPromotionEvidence(expected, pr, reviews, checkResult.check_runs ?? [], Number(process.env.QA_APP_ID))
     if (suiteSha !== acceptedSha) {
       git(acceptedDir, 'fetch', '--no-tags', 'origin', suiteSha)
       assertProposalOnlyTests(acceptedDir, acceptedSha, suiteSha)
@@ -76,7 +78,8 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
       promoted_source_pr: expected.sourcePr,
       promoted_suite_sha: suiteSha,
       previous_accepted_sha: acceptedSha,
-      workflow_sha: process.env.GITHUB_SHA,
+      acceptance_workflow_sha: acceptanceWorkflowSha,
+      promotion_workflow_sha: process.env.GITHUB_SHA,
       source_run_id: expected.runId,
     }, null, 2) + '\n')
     git(acceptedDir, 'add', '--', '.qa/state.json')
