@@ -15,7 +15,10 @@ function evidence(check) {
   return fields
 }
 
-export function assertPromotionEvidence(expected, pr, reviews, checks, qaAppId) {
+export function assertPromotionEvidence(expected, pr, reviews, checks, qaAppId, checkTotal = checks?.length) {
+  // ponytail: Fail closed at one full API page; paginate if a PR reaches 100 reviews or checks.
+  if (!Array.isArray(reviews) || reviews.length >= 100) throw new Error('Incomplete source review page')
+  if (!Array.isArray(checks) || checks.length >= 100 || checkTotal > checks.length) throw new Error('Incomplete QA check page')
   if (pr.number !== expected.sourcePr || !pr.merged_at ||
       pr.base?.ref !== 'main' || !sha(pr.head?.sha)) throw new Error('Source PR merge does not match')
   const latest = reviews.filter((review) => review.user?.login === 'magalz').at(-1)
@@ -65,7 +68,8 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     const pr = await get(`/repos/${SOURCE}/pulls/${expected.sourcePr}`)
     const reviews = await get(`/repos/${SOURCE}/pulls/${expected.sourcePr}/reviews?per_page=100`)
     const checkResult = await get(`/repos/${SOURCE}/commits/${pr.head.sha}/check-runs?check_name=canonical-acceptance&per_page=100`)
-    const acceptanceWorkflowSha = assertPromotionEvidence(expected, pr, reviews, checkResult.check_runs ?? [], Number(process.env.QA_APP_ID))
+    const acceptanceWorkflowSha = assertPromotionEvidence(expected, pr, reviews, checkResult.check_runs ?? [],
+      Number(process.env.QA_APP_ID), checkResult.total_count)
     if (suiteSha !== acceptedSha) {
       git(acceptedDir, 'fetch', '--no-tags', 'origin', suiteSha)
       assertProposalOnlyTests(acceptedDir, acceptedSha, suiteSha)

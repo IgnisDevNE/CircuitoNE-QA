@@ -24,3 +24,11 @@ test('requires independent check and approval for the exact merged content', () 
     ...checks, { ...checks[0], id: 11, conclusion: 'failure' },
   ], 999), /check/i)
 })
+
+test('incomplete review or check pages cannot authorize promotion', () => {
+  assert.throws(() => assertPromotionEvidence(expected, pr,
+    Array.from({ length: 100 }, () => reviews[0]), checks, 999), /review|page|limit/i)
+  assert.throws(() => assertPromotionEvidence(expected, pr, reviews,
+    Array.from({ length: 100 }, () => checks[0]), 999), /check|page|limit/i)
+  assert.throws(() => assertPromotionEvidence(expected, pr, reviews, checks, 999, 101), /check|page|limit/i)
+})

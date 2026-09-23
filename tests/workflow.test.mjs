@@ -45,6 +45,7 @@ test('approval workflow runs trusted main with no secrets and dispatches canonic
 test('promotion closes its exact proposal only after promotion succeeds', () => {
   const workflow = yaml('../.github/workflows/canonical.yml')
   assert.match(workflow, /close-proposal:\n\s+if: \$\{\{ inputs\.mode == 'promote' && needs\.promote\.result == 'success' && needs\.resolve\.outputs\.proposalPr != '' \}\}/)
+  assert.match(workflow.split('close-proposal:')[1], /ref: \$\{\{ github\.sha \}\}/)
   assert.match(workflow, /pull-requests: write[\s\S]*node runner\/scripts\/close-promoted\.mjs/)
   assert.doesNotMatch(workflow.split('close-proposal:')[1], /secrets\./)
 })

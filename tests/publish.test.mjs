@@ -38,6 +38,8 @@ test('a failed resolution reports failure only on the trusted source PR commit',
   assert.throws(() => identifyFailedSource(123, run, [{ ...pulls[0], created_at: '2026-09-22T23:36:00Z' }]), /exact open source PR/)
   assert.throws(() => identifyFailedSource(123, { ...run, pull_requests: [{ number: 60 }] }, pulls), /exact open source PR/)
   assert.throws(() => identifyFailedSource(123, run, [pulls[0], pulls[0]]), /exact open source PR/)
+  assert.throws(() => identifyFailedSource(123, run, [pulls[0],
+    ...Array.from({ length: 99 }, () => ({ ...pulls[0], state: 'closed' }))]), /page|limit|incomplete/i)
   const check = failureCheck(SHA, 123, 'https://github.com/IgnisDevNE/CircuitoNE-QA/actions/runs/456')
   assert.equal(check.head_sha, SHA)
   assert.equal(check.name, 'canonical-acceptance')
@@ -45,8 +47,13 @@ test('a failed resolution reports failure only on the trusted source PR commit',
   assert.equal(check.conclusion, 'failure')
   assert.match(check.details_url, /actions\/runs\/456$/)
   const published = []
-  const get = async (path) => path.endsWith('/actions/runs/123') ? run : pulls
+  const requested = []
+  const get = async (path) => {
+    requested.push(path)
+    return path.endsWith('/actions/runs/123') ? run : pulls
+  }
   await reportFailedResolution('123', check.details_url, get, async (payload) => published.push(payload))
+  assert.ok(requested.includes(`/repos/IgnisDevNE/CircuitoNE/commits/${SHA}/pulls?per_page=100`))
   assert.deepEqual(published, [check])
   await assert.rejects(
     reportFailedResolution('123', check.details_url, async (path) => path.endsWith('/actions/runs/123')

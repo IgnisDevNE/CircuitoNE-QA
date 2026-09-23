@@ -23,7 +23,8 @@ async function request(path, token, method = 'GET', body) {
 export async function closeObsoleteProposal(sourcePr, send) {
   const branch = `proposals/source-pr-${sourcePr}`
   const pulls = await send(`/repos/${QA}/pulls?state=open&base=accepted&head=IgnisDevNE:${encodeURIComponent(branch)}&per_page=100`, 'GET')
-  if (!Array.isArray(pulls)) throw new Error('Invalid QA proposal list')
+  // ponytail: Fail closed at one full API page; paginate if a source PR ever reaches 100 proposals.
+  if (!Array.isArray(pulls) || pulls.length >= 100) throw new Error('Incomplete QA proposal page')
   for (const pr of pulls) {
     if (pr.state === 'open' && pr.head?.ref === branch && pr.head.repo?.full_name === QA && Number.isSafeInteger(pr.number)) {
       await send(`/repos/${QA}/pulls/${pr.number}`, 'PATCH', { state: 'closed' })
@@ -34,7 +35,7 @@ export async function closeObsoleteProposal(sourcePr, send) {
 export async function ensureProposal(sourcePr, sourceSha, acceptedSha, send) {
   const branch = `proposals/source-pr-${sourcePr}`
   const pulls = await send(`/repos/${QA}/pulls?state=open&base=accepted&head=IgnisDevNE:${encodeURIComponent(branch)}&per_page=100`, 'GET')
-  if (!Array.isArray(pulls)) throw new Error('Invalid QA proposal list')
+  if (!Array.isArray(pulls) || pulls.length >= 100) throw new Error('Incomplete QA proposal page')
   const existing = pulls.find((pr) => pr.state === 'open' && pr.head?.ref === branch &&
     pr.head.repo?.full_name === QA && pr.base?.ref === 'accepted')
   if (existing) {

@@ -15,7 +15,7 @@ const pr = { number: 54, state: 'open', head: { sha: SHA, repo: { full_name: 'Ig
 function api(overrides = {}) {
   const values = {
     '/repos/IgnisDevNE/CircuitoNE/actions/runs/123': run,
-    [`/repos/IgnisDevNE/CircuitoNE/commits/${SHA}/pulls`]: [pr],
+    [`/repos/IgnisDevNE/CircuitoNE/commits/${SHA}/pulls?per_page=100`]: [pr],
     '/repos/IgnisDevNE/CircuitoNE/branches/main': { commit: { sha: MAIN } },
     ...overrides,
   }
@@ -32,7 +32,7 @@ test('resolves an exact open PR from a completed trusted CI run', async () => {
 
 test('rejects a stale head, wrong workflow or advanced base', async () => {
   await assert.rejects(resolveSourceRun('123', 'accept', api({
-    [`/repos/IgnisDevNE/CircuitoNE/commits/${SHA}/pulls`]: [{ ...pr, head: { ...pr.head, sha: MAIN } }],
+    [`/repos/IgnisDevNE/CircuitoNE/commits/${SHA}/pulls?per_page=100`]: [{ ...pr, head: { ...pr.head, sha: MAIN } }],
   })), /exact open PR/i)
   await assert.rejects(resolveSourceRun('123', 'accept', api({
     '/repos/IgnisDevNE/CircuitoNE/actions/runs/123': { ...run, path: '.github/workflows/fake.yml' },
@@ -42,12 +42,19 @@ test('rejects a stale head, wrong workflow or advanced base', async () => {
   })), /base advanced/i)
 })
 
+test('an incomplete source PR association page cannot hide ambiguity', async () => {
+  await assert.rejects(resolveSourceRun('123', 'accept', api({
+    [`/repos/IgnisDevNE/CircuitoNE/commits/${SHA}/pulls?per_page=100`]: [pr,
+      ...Array.from({ length: 99 }, () => ({ ...pr, state: 'closed' }))],
+  })), /page|limit|incomplete/i)
+})
+
 test('promotes only a successful main push caused by a merged PR', async () => {
   const pushRun = { ...run, event: 'push', head_branch: 'main' }
   const merged = { ...pr, state: 'closed', merged_at: '2026-09-22T00:00:00Z', head: { ...pr.head, sha: HEAD } }
   const get = api({
     '/repos/IgnisDevNE/CircuitoNE/actions/runs/123': pushRun,
-    [`/repos/IgnisDevNE/CircuitoNE/commits/${SHA}/pulls`]: [merged],
+    [`/repos/IgnisDevNE/CircuitoNE/commits/${SHA}/pulls?per_page=100`]: [merged],
     '/repos/IgnisDevNE/CircuitoNE/branches/main': { commit: { sha: SHA } },
     [`/repos/IgnisDevNE/CircuitoNE/commits/${SHA}`]: { parents: [{ sha: MAIN }], commit: { tree: { sha: TREE } } },
     [`/repos/IgnisDevNE/CircuitoNE/commits/${HEAD}`]: { commit: { tree: { sha: TREE } } },
@@ -56,7 +63,7 @@ test('promotes only a successful main push caused by a merged PR', async () => {
     { mode: 'promote', sourceSha: SHA, sourceMainSha: MAIN, sourcePr: 54, runId: 123, sourceCiConclusion: 'success' })
   await assert.rejects(resolveSourceRun('123', 'promote', api({
     '/repos/IgnisDevNE/CircuitoNE/actions/runs/123': pushRun,
-    [`/repos/IgnisDevNE/CircuitoNE/commits/${SHA}/pulls`]: [merged],
+    [`/repos/IgnisDevNE/CircuitoNE/commits/${SHA}/pulls?per_page=100`]: [merged],
     '/repos/IgnisDevNE/CircuitoNE/branches/main': { commit: { sha: SHA } },
     [`/repos/IgnisDevNE/CircuitoNE/commits/${SHA}`]: { parents: [{ sha: MAIN }], commit: { tree: { sha: TREE } } },
     [`/repos/IgnisDevNE/CircuitoNE/commits/${HEAD}`]: { commit: { tree: { sha: MAIN } } },

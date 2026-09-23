@@ -43,3 +43,9 @@ test('does not reuse a human-authored proposal that its author cannot approve', 
   const send = async () => [{ state: 'open', user: { login: 'magalz' }, head: { ref: 'proposals/source-pr-54', repo: { full_name: 'IgnisDevNE/CircuitoNE-QA' } }, base: { ref: 'accepted' } }]
   await assert.rejects(ensureProposal(54, 'a'.repeat(40), 'b'.repeat(40), send), /must be opened by the QA App/)
 })
+
+test('an incomplete proposal page cannot create or close a QA proposal', async () => {
+  const send = async () => Array.from({ length: 100 }, () => ({}))
+  await assert.rejects(ensureProposal(54, 'a'.repeat(40), 'b'.repeat(40), send), /proposal|page|limit/i)
+  await assert.rejects(closeObsoleteProposal(54, send), /proposal|page|limit/i)
+})

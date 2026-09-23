@@ -27,7 +27,7 @@ function api(overrides = {}) {
     [`/repos/${SOURCE}/actions/workflows/ci.yml/runs?event=pull_request&head_sha=${C}&status=completed&per_page=100`]: { workflow_runs: [run] },
     [`/repos/${SOURCE}/actions/runs/123`]: run,
     [`/repos/${SOURCE}/branches/main`]: { commit: { sha: B } },
-    [`/repos/${SOURCE}/commits/${C}/pulls`]: [sourcePr],
+    [`/repos/${SOURCE}/commits/${C}/pulls?per_page=100`]: [sourcePr],
     ...overrides,
   }
   return async (path) => {
@@ -68,4 +68,19 @@ test('a newer failed CI cannot be bypassed by an older successful run on the sam
   const path = `/repos/${SOURCE}/actions/workflows/ci.yml/runs?event=pull_request&head_sha=${C}&status=completed&per_page=100`
   await assert.rejects(resumeAfterApproval(event, api({ [path]: { workflow_runs: [run,
     { ...run, id: 124, conclusion: 'failure' }] } }), () => assert.fail('Must not dispatch')), /successful CI/i)
+})
+
+test('incomplete review or CI pages cannot resume an older approval', async () => {
+  const dispatch = () => assert.fail('Must not dispatch')
+  const reviews = Array.from({ length: 100 }, () => ({ ...event.review, state: 'APPROVED' }))
+  await assert.rejects(resumeAfterApproval(event, api({
+    [`/repos/${QA}/pulls/12/reviews?per_page=100`]: reviews,
+  }), dispatch), /review|page|limit/i)
+  const path = `/repos/${SOURCE}/actions/workflows/ci.yml/runs?event=pull_request&head_sha=${C}&status=completed&per_page=100`
+  await assert.rejects(resumeAfterApproval(event, api({
+    [path]: { workflow_runs: Array.from({ length: 100 }, () => run) },
+  }), dispatch), /CI|page|limit/i)
+  await assert.rejects(resumeAfterApproval(event, api({
+    [path]: { workflow_runs: [run], total_count: 101 },
+  }), dispatch), /CI|page|limit/i)
 })

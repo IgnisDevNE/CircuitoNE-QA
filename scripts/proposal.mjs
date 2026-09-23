@@ -9,7 +9,8 @@ export async function chooseApprovedSuite(sourcePr, acceptedSha, getJson) {
   if (!Number.isSafeInteger(sourcePr) || sourcePr < 1 || !sha(acceptedSha)) throw new Error('Invalid suite request')
   const branch = `proposals/source-pr-${sourcePr}`
   const pulls = await getJson(`/repos/${QA}/pulls?state=open&base=accepted&head=IgnisDevNE:${encodeURIComponent(branch)}&per_page=100`)
-  if (!Array.isArray(pulls)) throw new Error('Invalid QA proposals')
+  // ponytail: Fail closed at one full API page; paginate if a source PR ever reaches 100 proposals.
+  if (!Array.isArray(pulls) || pulls.length >= 100) throw new Error('Incomplete or invalid QA proposal page')
   const matches = pulls.filter((pr) => pr.state === 'open' && !pr.draft && pr.base?.ref === 'accepted' &&
     pr.head?.ref === branch && pr.head.repo?.full_name === QA && sha(pr.head.sha) && Number.isSafeInteger(pr.number))
   if (matches.length > 1) throw new Error('Ambiguous QA proposal')
@@ -17,7 +18,7 @@ export async function chooseApprovedSuite(sourcePr, acceptedSha, getJson) {
   const proposal = matches[0]
   if (proposal.user?.login !== 'circuitone-qa-publisher[bot]') throw new Error('QA proposal must be opened by the QA App')
   const reviews = await getJson(`/repos/${QA}/pulls/${proposal.number}/reviews?per_page=100`)
-  if (!Array.isArray(reviews)) throw new Error('Invalid QA reviews')
+  if (!Array.isArray(reviews) || reviews.length >= 100) throw new Error('Incomplete or invalid QA review page')
   const latest = reviews.filter((review) => review.user?.login === 'magalz').at(-1)
   if (latest?.state !== 'APPROVED' || latest.commit_id !== proposal.head.sha) {
     throw new Error('QA proposal is not approved at its current SHA')
