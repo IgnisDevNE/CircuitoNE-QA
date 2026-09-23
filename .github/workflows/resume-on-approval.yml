@@ -1,0 +1,29 @@
+name: Resume canonical acceptance after QA approval
+
+on:
+  pull_request_review:
+    types: [submitted]
+
+permissions: {}
+
+jobs:
+  resume:
+    if: ${{ github.event.review.state == 'approved' && github.event.pull_request.base.ref == 'accepted' && startsWith(github.event.pull_request.head.ref, 'proposals/source-pr-') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+      actions: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22.23.2'
+      - name: Validate current approval and dispatch canonical verifier
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/resume.mjs
