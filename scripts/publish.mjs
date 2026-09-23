@@ -3,9 +3,9 @@ import { qaAppToken } from './app-token.mjs'
 import { chooseApprovedSuite } from './proposal.mjs'
 import { resolveSourceRun } from './resolve.mjs'
 
-const SOURCE = 'IgnisDevNE/CircuitoNE'
+export const SOURCE = 'IgnisDevNE/CircuitoNE'
 const QA = 'IgnisDevNE/CircuitoNE-QA'
-const SOURCE_REPOSITORY_ID = 1380574734
+export const SOURCE_REPOSITORY_ID = 1380574734
 
 export function decideConclusion(expected, current, testResult) {
   const fields = ['sourceSha', 'sourceMainSha', 'sourcePr', 'runId', 'suiteSha', 'acceptedSha']
@@ -13,7 +13,7 @@ export function decideConclusion(expected, current, testResult) {
     fields.every((field) => expected[field] === current[field]) ? 'success' : 'failure'
 }
 
-async function request(path, token, method = 'GET', body) {
+export async function request(path, token, method = 'GET', body) {
   const response = await fetch(`https://api.github.com${path}`, {
     method,
     headers: { Accept: 'application/vnd.github+json', Authorization: `Bearer ${token}`,
