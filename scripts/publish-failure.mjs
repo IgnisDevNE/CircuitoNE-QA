@@ -5,6 +5,8 @@ import { request, SOURCE, SOURCE_REPOSITORY_ID } from './publish.mjs'
 const sha = (value) => typeof value === 'string' && /^[0-9a-f]{40,64}$/.test(value)
 
 export function identifyFailedSource(runId, run, pulls) {
+  // ponytail: Fail closed at one full API page; paginate if a commit reaches 100 associated PRs.
+  if (!Array.isArray(pulls) || pulls.length >= 100) throw new Error('Incomplete source PR association page')
   if (run.id !== Number(runId) || run.name !== 'CI' || run.path !== '.github/workflows/ci.yml' ||
       run.event !== 'pull_request' || run.status !== 'completed' || !sha(run.head_sha) ||
       run.repository?.full_name !== SOURCE || run.head_repository?.full_name !== SOURCE ||
@@ -36,7 +38,7 @@ export async function reportFailedResolution(runId, url, getJson, createCheck) {
   if (!/^[1-9][0-9]*$/.test(runId || '')) throw new Error('Invalid source run ID')
   const run = await getJson(`/repos/${SOURCE}/actions/runs/${runId}`)
   if (!sha(run.head_sha)) throw new Error('Not a trusted source PR CI run')
-  const pulls = await getJson(`/repos/${SOURCE}/commits/${run.head_sha}/pulls`)
+  const pulls = await getJson(`/repos/${SOURCE}/commits/${run.head_sha}/pulls?per_page=100`)
   const sourceSha = identifyFailedSource(runId, run, pulls)
   await createCheck(failureCheck(sourceSha, runId, url))
   return sourceSha

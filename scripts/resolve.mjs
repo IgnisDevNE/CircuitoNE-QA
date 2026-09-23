@@ -18,8 +18,9 @@ export async function resolveSourceRun(runId, mode, getJson) {
   const main = (await getJson(`/repos/${SOURCE}/branches/main`)).commit?.sha
   if (!sha(main)) throw new Error('Invalid source main')
 
-  const pulls = await getJson(`/repos/${SOURCE}/commits/${run.head_sha}/pulls`)
-  if (!Array.isArray(pulls)) throw new Error('Invalid source pull request list')
+  const pulls = await getJson(`/repos/${SOURCE}/commits/${run.head_sha}/pulls?per_page=100`)
+  // ponytail: Fail closed at one full API page; paginate if a commit reaches 100 associated PRs.
+  if (!Array.isArray(pulls) || pulls.length >= 100) throw new Error('Incomplete source PR association page')
   if (mode === 'accept') {
     if (run.event !== 'pull_request') throw new Error('Wrong source event')
     const matches = pulls.filter((pr) => pr.state === 'open' && pr.head?.sha === run.head_sha &&

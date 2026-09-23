@@ -27,7 +27,7 @@ function api(overrides = {}) {
     [`/repos/${SOURCE}/actions/workflows/ci.yml/runs?event=pull_request&head_sha=${C}&status=completed&per_page=100`]: { workflow_runs: [run] },
     [`/repos/${SOURCE}/actions/runs/123`]: run,
     [`/repos/${SOURCE}/branches/main`]: { commit: { sha: B } },
-    [`/repos/${SOURCE}/commits/${C}/pulls`]: [sourcePr],
+    [`/repos/${SOURCE}/commits/${C}/pulls?per_page=100`]: [sourcePr],
     ...overrides,
   }
   return async (path) => {
