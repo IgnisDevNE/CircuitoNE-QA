@@ -24,6 +24,17 @@ test('uses only exact QA proposal approved at its current commit', async () => {
   await assert.rejects(chooseApprovedSuite(54, S, api([proposal], [{ ...approved, state: 'DISMISSED' }])), /approved/i)
 })
 
+test('an incomplete review page cannot approve an older QA decision', async () => {
+  const reviews = Array.from({ length: 100 }, (_, id) => ({ user: { login: 'magalz' },
+    state: 'APPROVED', commit_id: Q, id }))
+  await assert.rejects(chooseApprovedSuite(54, S, api([proposal], reviews)), /review|page|limit/i)
+})
+
+test('an incomplete proposal page cannot hide a conflicting QA proposal', async () => {
+  await assert.rejects(chooseApprovedSuite(54, S, api(Array.from({ length: 100 }, () => ({ ...proposal,
+    head: { ...proposal.head, ref: 'unrelated' } })))), /proposal|page|limit/i)
+})
+
 test('rejects ambiguous or external proposals', async () => {
   const approved = { user: { login: 'magalz' }, state: 'APPROVED', commit_id: Q }
   await assert.rejects(chooseApprovedSuite(54, S, api([proposal, proposal], [approved])), /ambiguous/i)

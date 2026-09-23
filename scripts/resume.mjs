@@ -22,7 +22,9 @@ export async function resumeAfterApproval(event, getJson, dispatch) {
     throw new Error('QA proposal is not the current trusted proposal')
   }
   const reviews = await getJson(`/repos/${QA}/pulls/${proposalNumber}/reviews?per_page=100`)
-  const latest = Array.isArray(reviews) ? reviews.filter((item) => item.user?.login === 'magalz').at(-1) : null
+  // ponytail: Fail closed at one full API page; paginate when a PR reaches 100 reviews or CI runs.
+  if (!Array.isArray(reviews) || reviews.length >= 100) throw new Error('Incomplete QA review page')
+  const latest = reviews.filter((item) => item.user?.login === 'magalz').at(-1)
   if (latest?.id !== review.id || latest.state !== 'APPROVED' || latest.commit_id !== proposal.head.sha) {
     throw new Error('QA review is stale or superseded')
   }
@@ -33,6 +35,10 @@ export async function resumeAfterApproval(event, getJson, dispatch) {
     throw new Error('Source PR is not eligible')
   }
   const runs = await getJson(`/repos/${SOURCE}/actions/workflows/ci.yml/runs?event=pull_request&head_sha=${source.head.sha}&status=completed&per_page=100`)
+  if (!Array.isArray(runs?.workflow_runs) || runs.workflow_runs.length >= 100 ||
+      (Number.isSafeInteger(runs.total_count) && runs.total_count > runs.workflow_runs.length)) {
+    throw new Error('Incomplete source CI run page')
+  }
   const latestRun = Array.isArray(runs?.workflow_runs) ? runs.workflow_runs
     .filter((item) => Number.isSafeInteger(item.id)).sort((a, b) => b.id - a.id)[0] : null
   if (!latestRun || latestRun.conclusion !== 'success') throw new Error('No latest successful CI for source PR')
