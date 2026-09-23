@@ -6,7 +6,7 @@ import { acceptedState } from '../scripts/proposal.mjs'
 const S = 'a'.repeat(40)
 const Q = 'b'.repeat(40)
 const QA = 'IgnisDevNE/CircuitoNE-QA'
-const proposal = { number: 7, state: 'open', draft: false, base: { ref: 'accepted' },
+const proposal = { number: 7, state: 'open', draft: false, user: { login: 'circuitone-qa-publisher[bot]' }, base: { ref: 'accepted' },
   head: { ref: 'proposals/source-pr-54', sha: Q, repo: { full_name: QA } } }
 
 function api(pulls = [], reviews = []) {
@@ -29,6 +29,7 @@ test('rejects ambiguous or external proposals', async () => {
   await assert.rejects(chooseApprovedSuite(54, S, api([proposal, proposal], [approved])), /ambiguous/i)
   assert.deepEqual(await chooseApprovedSuite(54, S, api([{ ...proposal, head: { ...proposal.head, repo: { full_name: 'attacker/fork' } } }], [approved])),
     { suiteSha: S, proposalPr: null })
+  await assert.rejects(chooseApprovedSuite(54, S, api([{ ...proposal, user: { login: 'magalz' } }], [approved])), /QA App/i)
 })
 
 test('promotion retries are no-ops only for the same merged PR', () => {

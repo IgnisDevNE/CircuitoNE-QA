@@ -45,7 +45,7 @@ export async function ensureProposal(sourcePr, sourceSha, acceptedSha, send) {
     title: `Canonical tests for CircuitoNE #${sourcePr}`,
     head: branch,
     base: 'accepted',
-    body: `Source PR: https://github.com/IgnisDevNE/CircuitoNE/pull/${sourcePr}\nSource commit: ${sourceSha}\nAccepted suite: ${acceptedSha}\n\nReview the test changes and approve this QA PR before rerunning source CI.`,
+    body: `Source PR: https://github.com/IgnisDevNE/CircuitoNE/pull/${sourcePr}\nSource commit: ${sourceSha}\nAccepted suite: ${acceptedSha}\n\nReview the test changes and approve this QA PR. The QA approval workflow resumes canonical acceptance automatically.`,
   })
   if (typeof created?.html_url !== 'string') throw new Error('Invalid QA proposal response')
   return created.html_url

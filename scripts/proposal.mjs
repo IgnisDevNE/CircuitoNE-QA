@@ -15,6 +15,7 @@ export async function chooseApprovedSuite(sourcePr, acceptedSha, getJson) {
   if (matches.length > 1) throw new Error('Ambiguous QA proposal')
   if (!matches.length) return { suiteSha: acceptedSha, proposalPr: null }
   const proposal = matches[0]
+  if (proposal.user?.login !== 'circuitone-qa-publisher[bot]') throw new Error('QA proposal must be opened by the QA App')
   const reviews = await getJson(`/repos/${QA}/pulls/${proposal.number}/reviews?per_page=100`)
   if (!Array.isArray(reviews)) throw new Error('Invalid QA reviews')
   const latest = reviews.filter((review) => review.user?.login === 'magalz').at(-1)
