@@ -1,10 +1,10 @@
 {
   "test_tree": "f2faeca958d84c0cad900fd1d5896f4453f8b966",
-  "source_main_sha": "6971bbc11d651d83c65c5361ecdc400b792af822",
-  "promoted_source_pr": 82,
-  "promoted_suite_sha": "9ab9b688ed6838cf367b000affc3602ee88204e4",
-  "previous_accepted_sha": "3c125b033c5492747b1f4ce09cbde03fe5c1fdbd",
+  "source_main_sha": "ef15365e8fa4ef9b32f9f4aaca9cbf66aebe6fd9",
+  "promoted_source_pr": 83,
+  "promoted_suite_sha": "4cadfb6eb75f0105796bca43aeb9af4100ff3c70",
+  "previous_accepted_sha": "4cadfb6eb75f0105796bca43aeb9af4100ff3c70",
   "acceptance_workflow_sha": "d20a3310e84a6b2d3a285262a88ba37c4e158263",
   "promotion_workflow_sha": "d20a3310e84a6b2d3a285262a88ba37c4e158263",
-  "source_run_id": 35923075988
+  "source_run_id": 35924245782
 }
