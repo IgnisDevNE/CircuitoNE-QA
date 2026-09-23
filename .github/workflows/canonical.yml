@@ -49,7 +49,9 @@ jobs:
         id: source
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: node runner/scripts/resolve.mjs '${{ inputs.source_run_id }}' '${{ inputs.mode }}'
+          SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+          QA_MODE: ${{ inputs.mode }}
+        run: node runner/scripts/resolve.mjs "$SOURCE_RUN_ID" "$QA_MODE"
       - name: Pin accepted suite
         id: accepted
         run: echo "sha=$(git -C accepted rev-parse HEAD)" >> "$GITHUB_OUTPUT"
@@ -138,7 +140,7 @@ jobs:
           exit "$status"
 
   publish:
-    if: ${{ always() && inputs.mode == 'accept' && needs.resolve.result == 'success' }}
+    if: ${{ always() && inputs.mode == 'accept' }}
     needs: [resolve, test]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -157,11 +159,17 @@ jobs:
       - name: Publish check from separate QA App
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          SOURCE_RUN_ID: ${{ inputs.source_run_id }}
           QA_APP_ID: ${{ secrets.QA_APP_ID }}
           QA_APP_INSTALLATION_ID: ${{ secrets.QA_APP_INSTALLATION_ID }}
           QA_APP_PRIVATE_KEY: ${{ secrets.QA_APP_PRIVATE_KEY }}
           QA_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: node runner/scripts/publish.mjs '${{ needs.resolve.outputs.runId }}' '${{ needs.resolve.outputs.sourceSha }}' '${{ needs.resolve.outputs.sourceMainSha }}' '${{ needs.resolve.outputs.sourcePr }}' '${{ needs.resolve.outputs.suiteSha }}' '${{ needs.resolve.outputs.acceptedSha }}' '${{ needs.test.result }}'
+        run: |
+          if [[ '${{ needs.resolve.result }}' == 'success' ]]; then
+            node runner/scripts/publish.mjs '${{ needs.resolve.outputs.runId }}' '${{ needs.resolve.outputs.sourceSha }}' '${{ needs.resolve.outputs.sourceMainSha }}' '${{ needs.resolve.outputs.sourcePr }}' '${{ needs.resolve.outputs.suiteSha }}' '${{ needs.resolve.outputs.acceptedSha }}' '${{ needs.test.result }}'
+          else
+            node runner/scripts/publish-failure.mjs "$SOURCE_RUN_ID"
+          fi
 
   promote:
     if: ${{ inputs.mode == 'promote' && needs.test.result == 'success' }}

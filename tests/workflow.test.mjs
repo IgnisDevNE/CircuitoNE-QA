@@ -17,3 +17,12 @@ test('prints canonical report diagnostics and preserves the browser runner exit 
   const workflow = readFileSync(new URL('../.github/workflows/canonical.yml', import.meta.url), 'utf8')
   assert.match(workflow, /status=\$\?\n\s+set -e\n\s+node scripts\/results\.mjs "\$RUNNER_TEMP\/canonical-results\.json"\n\s+exit "\$status"/)
 })
+
+test('reports a failed QA resolution as a negative check on the source commit', () => {
+  const workflow = readFileSync(new URL('../.github/workflows/canonical.yml', import.meta.url), 'utf8')
+  assert.match(workflow, /always\(\) && inputs\.mode == 'accept'/)
+  assert.doesNotMatch(workflow, /always\(\) && inputs\.mode == 'accept' && needs\.resolve\.result == 'success'/)
+  assert.match(workflow, /SOURCE_RUN_ID: \$\{\{ inputs\.source_run_id \}\}/)
+  assert.match(workflow, /node runner\/scripts\/publish-failure\.mjs "\$SOURCE_RUN_ID"/)
+  assert.doesNotMatch(workflow, /run: node runner\/scripts\/resolve\.mjs '\$\{\{ inputs\.source_run_id \}\}'/)
+})
