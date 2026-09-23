@@ -22,6 +22,8 @@ test('prints canonical report diagnostics and preserves the browser runner exit 
 
 test('reports a failed QA resolution as a negative check on the source commit', () => {
   const workflow = yaml('../.github/workflows/canonical.yml')
+  assert.match(workflow, /Resolve trusted source event[\s\S]*Await exact source base promotion[\s\S]*Pin accepted suite[\s\S]*Stage changed tests as a QA proposal/)
+  assert.match(workflow, /node runner\/scripts\/wait-base\.mjs/)
   assert.match(workflow, /always\(\) && inputs\.mode == 'accept'/)
   assert.doesNotMatch(workflow, /always\(\) && inputs\.mode == 'accept' && needs\.resolve\.result == 'success'/)
   assert.match(workflow, /SOURCE_RUN_ID: \$\{\{ inputs\.source_run_id \}\}/)

@@ -18,7 +18,7 @@ permissions: {}
 jobs:
   resolve:
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 7
     environment: QA Publisher
     permissions:
       contents: write
@@ -52,6 +52,11 @@ jobs:
           SOURCE_RUN_ID: ${{ inputs.source_run_id }}
           QA_MODE: ${{ inputs.mode }}
         run: node runner/scripts/resolve.mjs "$SOURCE_RUN_ID" "$QA_MODE"
+      - name: Await exact source base promotion
+        if: ${{ inputs.mode == 'accept' }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node runner/scripts/wait-base.mjs '${{ steps.source.outputs.runId }}' '${{ steps.source.outputs.sourceSha }}' '${{ steps.source.outputs.sourceMainSha }}' '${{ steps.source.outputs.sourcePr }}' accepted
       - name: Pin accepted suite
         id: accepted
         run: echo "sha=$(git -C accepted rev-parse HEAD)" >> "$GITHUB_OUTPUT"
