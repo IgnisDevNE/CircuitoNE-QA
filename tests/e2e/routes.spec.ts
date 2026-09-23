@@ -59,6 +59,19 @@ for (const [path, title] of publicRoutes) {
   })
 }
 
+test('link direto do artista mantém o perfil público após recarga', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', error => errors.push(error.message))
+  await page.goto('/artistas/art-anerie')
+  await expect(page.getByRole('heading', { name: 'ANERIE', exact: true })).toBeVisible()
+  const response = await page.reload()
+  expect(response?.status()).toBe(200)
+  await expect(page).toHaveURL(/\/artistas\/art-anerie$/)
+  await expect(page).toHaveTitle('ANERIE · CIRCUITO NE')
+  await expect(page.getByRole('heading', { name: 'ANERIE', exact: true })).toBeVisible()
+  expect(errors).toEqual([])
+})
+
 for (const [path, title] of privateRoutes) {
   test(`rota com sessão mock ${path}`, async ({ page }) => {
     const errors: string[] = []
