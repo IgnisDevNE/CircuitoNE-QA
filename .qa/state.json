@@ -1,10 +1,10 @@
 {
   "test_tree": "1a3235859e5cca658b2b2be749c58ecb870eec12",
-  "source_main_sha": "52ed30cbf38f1ddfe88523ea9af94de70f8f3ba3",
-  "promoted_source_pr": 97,
-  "promoted_suite_sha": "3816c28d79b728c3abc74c89703fbde1cae3a2f4",
-  "previous_accepted_sha": "fa30a219e316d184edf834d8d793d37314eceb65",
-  "acceptance_workflow_sha": "c28af810c8dd7c546bc740f2042e48c8a7607a83",
-  "promotion_workflow_sha": "c28af810c8dd7c546bc740f2042e48c8a7607a83",
-  "source_run_id": 35950042762
+  "source_main_sha": "9cfc669186345bc97519e4fc9f671a727d13ec96",
+  "promoted_source_pr": 99,
+  "promoted_suite_sha": "185137b90c9db41ed5825361886e60fc1bddea06",
+  "previous_accepted_sha": "185137b90c9db41ed5825361886e60fc1bddea06",
+  "acceptance_workflow_sha": "0f1dd938a716a9cd9e8e1c637ac91c368e43a732",
+  "promotion_workflow_sha": "0f1dd938a716a9cd9e8e1c637ac91c368e43a732",
+  "source_run_id": 35953314560
 }
