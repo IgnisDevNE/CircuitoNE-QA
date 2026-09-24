@@ -56,3 +56,17 @@ test('promotion closes its exact proposal only after promotion succeeds', () => 
   assert.match(workflow, /pull-requests: write[\s\S]*node runner\/scripts\/close-promoted\.mjs/)
   assert.doesNotMatch(workflow.split('close-proposal:')[1], /secrets\./)
 })
+
+test('promotion uses only the QA-scoped promoter App to write accepted', () => {
+  const promote = yaml('../.github/workflows/canonical.yml').split('\n  promote:')[1]?.split('\n  close-proposal:')[0]
+  assert.ok(promote)
+  assert.match(promote, /environment: QA Promotion/)
+  assert.match(promote, /contents: read/)
+  assert.doesNotMatch(promote, /^\s+contents: write$/m)
+  assert.match(promote, /uses: actions\/create-github-app-token@[0-9a-f]{40}/)
+  assert.match(promote, /repositories: CircuitoNE-QA/)
+  assert.match(promote, /permission-contents: write/)
+  assert.match(promote, /token: \$\{\{ steps\.promoter-token\.outputs\.token \}\}/)
+  assert.match(promote, /QA_PROMOTER_PRIVATE_KEY/)
+  assert.doesNotMatch(promote, /QA_APP_PRIVATE_KEY/)
+})

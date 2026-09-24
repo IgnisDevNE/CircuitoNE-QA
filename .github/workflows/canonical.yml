@@ -182,26 +182,34 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
-      contents: write
+      contents: read
       pull-requests: read
-    environment: QA Publisher
+    environment: QA Promotion
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           path: runner
           persist-credentials: false
+      - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
+        id: promoter-token
+        with:
+          app-id: ${{ vars.QA_PROMOTER_APP_ID }}
+          private-key: ${{ secrets.QA_PROMOTER_PRIVATE_KEY }}
+          repositories: CircuitoNE-QA
+          permission-contents: write
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: accepted
           path: accepted
           fetch-depth: 0
+          token: ${{ steps.promoter-token.outputs.token }}
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '22.23.2'
       - name: Promote exactly the tested suite after merged PR verification
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          QA_APP_ID: ${{ secrets.QA_APP_ID }}
+          QA_APP_ID: '5037798'
         run: node runner/scripts/promote.mjs accepted '${{ needs.resolve.outputs.acceptedSha }}' '${{ needs.resolve.outputs.suiteSha }}' '${{ needs.resolve.outputs.sourceSha }}' '${{ needs.resolve.outputs.sourceMainSha }}' '${{ needs.resolve.outputs.sourcePr }}' '${{ needs.resolve.outputs.runId }}'
 
   close-proposal:
