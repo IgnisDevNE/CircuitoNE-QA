@@ -126,7 +126,8 @@ jobs:
         run: docker build --tag circuitone-candidate candidate
       - name: Start isolated candidate container
         run: |
-          docker run --detach --name circuitone-candidate --read-only --cap-drop ALL --security-opt no-new-privileges --memory 128m -p 127.0.0.1:5182:3000 circuitone-candidate
+          # The candidate runs with fixtures and cannot use Supabase credentials.
+          docker run --detach --name circuitone-candidate --read-only --cap-drop ALL --security-opt no-new-privileges --memory 128m --env CIRCUITONE_RUNTIME=preview -p 127.0.0.1:5182:3000 circuitone-candidate
           for attempt in {1..30}; do
             if curl --fail --silent http://127.0.0.1:5182/ > /dev/null; then exit 0; fi
             sleep 1
