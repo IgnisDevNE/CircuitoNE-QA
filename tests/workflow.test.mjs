@@ -15,6 +15,11 @@ test('pins pnpm before installing the trusted runner from a nested checkout', ()
   assert.match(workflow, /uses: pnpm\/action-setup@[^\n]+\n\s+with:\n\s+version: '10\.34\.3'/)
 })
 
+test('runs the SSR candidate on its fixed Node port', () => {
+  const workflow = yaml('../.github/workflows/canonical.yml')
+  assert.match(workflow, /-p 127\.0\.0\.1:5182:3000 circuitone-candidate/)
+})
+
 test('prints canonical report diagnostics and preserves the browser runner exit status', () => {
   const workflow = yaml('../.github/workflows/canonical.yml')
   assert.match(workflow, /status=\$\?\n\s+set -e\n\s+node scripts\/results\.mjs "\$RUNNER_TEMP\/canonical-results\.json"\n\s+exit "\$status"/)
