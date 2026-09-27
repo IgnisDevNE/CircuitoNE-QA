@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { candidateSql, databasePlan, postgresArgs } from '../scripts/database.mjs'
@@ -45,4 +45,10 @@ test('database has no host mount, network, privileges or writable system', () =>
   assert.ok(args.includes('--read-only'))
   assert.ok(args.includes('no-new-privileges'))
   assert.ok(!args.some(a=>['--volume','-v','--mount','--privileged','--publish','-p'].includes(a)))
+})
+
+test('database and Auth use independently pinned official Docker Hub images', () => {
+  assert.ok(postgresArgs('qa-test').includes('docker.io/supabase/postgres@sha256:6942962433a569e87f228b4d4ab7e11db5deca64e43babb3a038443ad6c4f1bb'))
+  const runner = readFileSync(new URL('../scripts/database.mjs', import.meta.url), 'utf8')
+  assert.match(runner, /const AUTH='docker\.io\/supabase\/gotrue@sha256:c0c25187a6b835e65a6f6e6c6b39d090e832d40e6de5186f2c038e0411944232'/)
 })
