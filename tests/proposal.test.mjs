@@ -2,6 +2,7 @@ import { strict as assert } from 'node:assert'
 import test from 'node:test'
 import { chooseApprovedSuite } from '../scripts/proposal.mjs'
 import { acceptedState } from '../scripts/proposal.mjs'
+import { choosePromotionSuite } from '../scripts/proposal.mjs'
 
 const S = 'a'.repeat(40)
 const Q = 'b'.repeat(40)
@@ -52,4 +53,15 @@ test('promotion retries are no-ops only for the same merged PR', () => {
 
 test('legacy accepted state cannot skip database bootstrap on retry',()=>{
   assert.throws(()=>acceptedState({source_main_sha:Q,promoted_source_pr:54},'promote',Q,S,54),/SQL|version|bootstrap/i)
+})
+
+test('retry finds the exact recorded proposal for closure without promoting again',async()=>{
+  const state={promoted_source_pr:54,promoted_suite_sha:Q,previous_accepted_sha:S}
+  const approved={user:{login:'magalz'},state:'APPROVED',commit_id:Q}
+  assert.deepEqual(await choosePromotionSuite(state,54,'c'.repeat(40),true,api([proposal],[approved])),
+    {suiteSha:Q,proposalPr:7,closureAcceptedSha:S})
+  assert.deepEqual(await choosePromotionSuite(state,54,'c'.repeat(40),true,api()),
+    {suiteSha:Q,proposalPr:null,closureAcceptedSha:S})
+  await assert.rejects(choosePromotionSuite({...state,promoted_suite_sha:S},54,'c'.repeat(40),true,api([proposal],[approved])),/recorded/i)
+  await assert.rejects(choosePromotionSuite({...state,promoted_source_pr:55},54,'c'.repeat(40),true,api([proposal],[approved])),/recorded/i)
 })

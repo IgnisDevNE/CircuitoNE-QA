@@ -32,6 +32,7 @@ jobs:
       acceptedSha: ${{ steps.accepted.outputs.sha }}
       suiteSha: ${{ steps.proposal.outputs.suiteSha }}
       proposalPr: ${{ steps.proposal.outputs.proposalPr }}
+      closureAcceptedSha: ${{ steps.proposal.outputs.closureAcceptedSha }}
       alreadyPromoted: ${{ steps.proposal.outputs.alreadyPromoted }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -247,7 +248,7 @@ jobs:
         run: node runner/scripts/promote.mjs accepted '${{ needs.resolve.outputs.acceptedSha }}' '${{ needs.resolve.outputs.suiteSha }}' '${{ needs.resolve.outputs.sourceSha }}' '${{ needs.resolve.outputs.sourceMainSha }}' '${{ needs.resolve.outputs.sourcePr }}' '${{ needs.resolve.outputs.runId }}'
 
   close-proposal:
-    if: ${{ inputs.mode == 'promote' && needs.promote.result == 'success' && needs.resolve.outputs.proposalPr != '' }}
+    if: ${{ always() && inputs.mode == 'promote' && needs.resolve.result == 'success' && (needs.promote.result == 'success' || needs.resolve.outputs.alreadyPromoted == 'true') && needs.resolve.outputs.proposalPr != '' }}
     needs: [resolve, promote]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -266,4 +267,4 @@ jobs:
       - name: Close only the proposal recorded by accepted promotion
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: node runner/scripts/close-promoted.mjs '${{ needs.resolve.outputs.sourcePr }}' '${{ needs.resolve.outputs.proposalPr }}' '${{ needs.resolve.outputs.sourceSha }}' '${{ needs.resolve.outputs.suiteSha }}' '${{ needs.resolve.outputs.acceptedSha }}'
+        run: node runner/scripts/close-promoted.mjs '${{ needs.resolve.outputs.sourcePr }}' '${{ needs.resolve.outputs.proposalPr }}' '${{ needs.resolve.outputs.sourceSha }}' '${{ needs.resolve.outputs.suiteSha }}' '${{ needs.resolve.outputs.closureAcceptedSha }}'

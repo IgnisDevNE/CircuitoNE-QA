@@ -38,6 +38,10 @@ test('mismatched promotion, proposal SHA or origin leaves proposal open', async 
     [`/repos/${QA}/contents/.qa/state.json?ref=accepted`]:
       { encoding: 'base64', content: Buffer.from(JSON.stringify({ ...state, promoted_suite_sha: B })).toString('base64') },
   }), patch), /promotion/i)
+  await assert.rejects(closePromotedProposal(expected, api({
+    [`/repos/${QA}/contents/.qa/state.json?ref=accepted`]:
+      { encoding: 'base64', content: Buffer.from(JSON.stringify({ ...state, source_main_sha: B })).toString('base64') },
+  }), patch), /promotion/i)
   await assert.rejects(closePromotedProposal(expected, api({ [`/repos/${QA}/pulls/12`]:
     { ...proposal, head: { ...proposal.head, sha: B } } }), patch), /proposal/i)
   await assert.rejects(closePromotedProposal(expected, api({ [`/repos/${QA}/pulls/12`]:
