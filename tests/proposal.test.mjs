@@ -44,8 +44,12 @@ test('rejects ambiguous or external proposals', async () => {
 })
 
 test('promotion retries are no-ops only for the same merged PR', () => {
-  const state = { source_main_sha: Q, promoted_source_pr: 54, promoted_suite_sha: S }
+  const state = { schema_version: 2, source_main_sha: Q, promoted_source_pr: 54, promoted_suite_sha: S }
   assert.deepEqual(acceptedState(state, 'promote', Q, S, 54, S), { alreadyPromoted: true })
   assert.throws(() => acceptedState(state, 'promote', Q, S, 55, S), /different PR/i)
   assert.throws(() => acceptedState(state, 'accept', Q, S, 54, S), /advanced/i)
+})
+
+test('legacy accepted state cannot skip database bootstrap on retry',()=>{
+  assert.throws(()=>acceptedState({source_main_sha:Q,promoted_source_pr:54},'promote',Q,S,54),/SQL|version|bootstrap/i)
 })

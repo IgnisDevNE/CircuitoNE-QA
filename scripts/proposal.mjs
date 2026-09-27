@@ -30,6 +30,7 @@ export function acceptedState(state, mode, sourceSha, sourceMainSha, sourcePr) {
   if (state.source_main_sha === sourceMainSha) return { alreadyPromoted: false }
   if (mode === 'promote' && state.source_main_sha === sourceSha) {
     if (state.promoted_source_pr !== sourcePr) throw new Error('Current source main was promoted for a different PR')
+    if (state.schema_version!==2) throw new Error('SQL bootstrap version 2 has not been promoted')
     return { alreadyPromoted: true }
   }
   throw new Error('Source main has advanced beyond the promoted QA state')

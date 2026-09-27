@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process'
 import { writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { assertAcceptedState, assertProposalOnlyTests } from './integrity.mjs'
+import { assertAcceptedState, assertProposalOnlyTests, replaceCanonicalTests, suiteTrees } from './integrity.mjs'
 import { chooseApprovedSuite } from './proposal.mjs'
 import { resolveSourceRun } from './resolve.mjs'
 
@@ -30,7 +30,7 @@ export function assertPromotionEvidence(expected, pr, reviews, checks, qaAppId, 
   // The approved pre-merge check may predate QA runner fixes; this job retests the merge.
   const accepted = latestCheck?.status === 'completed' && latestCheck.conclusion === 'success' &&
     proof.source === pr.head.sha && proof.suite === expected.suiteSha &&
-    proof.accepted === expected.acceptedSha && sha(proof.workflow)
+    proof.accepted === expected.acceptedSha && sha(proof.workflow) && proof.scope === '2'
   if (!accepted) throw new Error('Independent QA App check for exact suite and workflow is missing')
   return proof.workflow
 }
@@ -73,11 +73,11 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     if (suiteSha !== acceptedSha) {
       git(acceptedDir, 'fetch', '--no-tags', 'origin', suiteSha)
       assertProposalOnlyTests(acceptedDir, acceptedSha, suiteSha)
-      git(acceptedDir, 'rm', '-r', '-q', '--', 'tests/e2e')
-      git(acceptedDir, 'checkout', suiteSha, '--', 'tests/e2e')
+      replaceCanonicalTests(acceptedDir,suiteSha)
     }
     writeFileSync(`${acceptedDir}/.qa/state.json`, JSON.stringify({
-      test_tree: git(acceptedDir, 'rev-parse', `${git(acceptedDir, 'write-tree')}:tests/e2e`),
+      schema_version: 2,
+      ...suiteTrees(acceptedDir,git(acceptedDir,'write-tree')),
       source_main_sha: sourceSha,
       promoted_source_pr: expected.sourcePr,
       promoted_suite_sha: suiteSha,

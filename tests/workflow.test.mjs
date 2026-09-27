@@ -4,6 +4,31 @@ import test from 'node:test'
 
 const yaml = (path) => readFileSync(new URL(path, import.meta.url), 'utf8').replace(/\r\n/g, '\n')
 
+test('QA changes exercise the SQL runtime against a fixed synthetic schema',()=>{
+  const workflow=yaml('../.github/workflows/qa-ci.yml')
+  assert.match(workflow,/database-harness:/)
+  assert.match(workflow,/ref: 5791d630414613dd43e76ddfe015bb3067fdc45e/)
+  assert.match(workflow,/node scripts\/database\.mjs fixture 5791d630414613dd43e76ddfe015bb3067fdc45e suite/)
+  assert.doesNotMatch(workflow,/secrets\.|environment:/)
+})
+
+test('SQL acceptance uses trusted runner and both jobs gate publication and promotion', () => {
+  const workflow=yaml('../.github/workflows/canonical.yml')
+  const database=workflow.split('\n  database:')[1]?.split('\n  publish:')[0]
+  assert.ok(database,'Independent database job missing')
+  assert.doesNotMatch(database,/secrets\.|environment:/)
+  assert.match(database,/contents: read/)
+  assert.match(database,/scripts\/integrity\.mjs/)
+  assert.match(database,/node runner\/scripts\/database\.mjs candidate/)
+  assert.doesNotMatch(database,/candidate\/scripts|candidate\/package/)
+  const publish=workflow.split('\n  publish:')[1]?.split('\n  promote:')[0]
+  assert.match(publish,/needs: \[resolve, test, database\]/)
+  assert.match(publish,/needs\.test\.result.*needs\.database\.result/)
+  const promote=workflow.split('\n  promote:')[1]?.split('\n  close-proposal:')[0]
+  assert.match(promote,/needs\.test\.result == 'success' && needs\.database\.result == 'success'/)
+  assert.match(promote,/needs: \[resolve, test, database\]/)
+})
+
 test('runs Playwright directly so the result file contains only JSON', () => {
   const workflow = yaml('../.github/workflows/canonical.yml')
   assert.match(workflow, /pnpm exec playwright test --reporter=json > "\$RUNNER_TEMP\/canonical-results\.json"/)

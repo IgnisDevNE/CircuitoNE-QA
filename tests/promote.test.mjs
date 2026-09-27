@@ -12,7 +12,7 @@ const pr = { number: 54, merged_at: '2026-09-22T00:00:00Z',
   base: { ref: 'main' }, head: { sha: C } }
 const reviews = [{ user: { login: 'magalz' }, state: 'APPROVED', commit_id: C }]
 const checks = [{ id: 10, name: 'canonical-acceptance', app: { id: 999 }, head_sha: C,
-  status: 'completed', conclusion: 'success', external_id: `run=122;source=${C};suite=${Q};accepted=${S};workflow=${W}` }]
+  status: 'completed', conclusion: 'success', external_id: `run=122;source=${C};suite=${Q};accepted=${S};workflow=${W};scope=2` }]
 
 test('requires independent check and approval for the exact merged content', () => {
   assert.equal(assertPromotionEvidence(expected, pr, reviews, checks, 999), W)
@@ -31,4 +31,8 @@ test('incomplete review or check pages cannot authorize promotion', () => {
   assert.throws(() => assertPromotionEvidence(expected, pr, reviews,
     Array.from({ length: 100 }, () => checks[0]), 999), /check|page|limit/i)
   assert.throws(() => assertPromotionEvidence(expected, pr, reviews, checks, 999, 101), /check|page|limit/i)
+})
+
+test('legacy promotion evidence cannot claim SQL acceptance',()=>{
+  assert.throws(()=>assertPromotionEvidence(expected,pr,reviews,[{...checks[0],external_id:checks[0].external_id.replace(';scope=2','')}],999),/check/i)
 })

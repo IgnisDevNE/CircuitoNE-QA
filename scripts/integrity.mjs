@@ -1,7 +1,19 @@
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
-const ROOT = 'tests/e2e/'
+export const ROOTS = ['tests/e2e/', 'tests/database/']
+export const protectedPath = path => path.startsWith('tests/e2e/') ||
+  (path.startsWith('tests/database/') && (/\.sql$/.test(path) || /-concurrency\.mjs$/.test(path)))
+const git = (repo,...args) => execFileSync('git',['-C',repo,...args],{encoding:'utf8',maxBuffer:1024*1024}).trim()
+
+export function suiteTrees(repo,commit) {
+  return {test_tree:git(repo,'rev-parse',commit+':tests/e2e'),database_tree:git(repo,'rev-parse',commit+':tests/database')}
+}
+export function replaceCanonicalTests(repo,commit) {
+  const paths=inventory(repo,commit).map(line=>line.slice(0,line.lastIndexOf(' ')))
+  git(repo,'rm','-r','-q','--ignore-unmatch','--',...ROOTS)
+  git(repo,'checkout',commit,'--',...paths)
+}
 
 export function assertAcceptedState(repo, commit) {
   if (!/^[0-9a-f]{40,64}$/.test(commit)) throw new Error('Invalid accepted commit SHA')
@@ -10,12 +22,17 @@ export function assertAcceptedState(repo, commit) {
       execFileSync('git', ['-C', repo, 'rev-parse', `${commit}:tests/e2e`], { encoding: 'utf8' }).trim() !== state.test_tree) {
     throw new Error('Accepted test tree differs from the promotion record')
   }
+  const hasDatabase=git(repo,'ls-tree',commit,'--','tests/database').length>0
+  if (state.schema_version===2) {
+    if (!hasDatabase || !/^[0-9a-f]{40,64}$/.test(state.database_tree||'') || suiteTrees(repo,commit).database_tree!==state.database_tree) throw new Error('Accepted database tree differs from promotion record')
+    inventory(repo,commit)
+  } else if (state.schema_version!==undefined || hasDatabase) throw new Error('Legacy accepted state cannot contain SQL without version 2')
   return state
 }
 
 function inventory(repo, commit) {
   if (!/^[0-9a-f]{40,64}$/.test(commit)) throw new Error('Invalid commit SHA')
-  const output = execFileSync('git', ['-C', repo, 'ls-tree', '-r', '-z', '--full-tree', commit, '--', ROOT], {
+  const output = execFileSync('git', ['-C', repo, 'ls-tree', '-r', '-z', '--full-tree', commit, '--', ...ROOTS], {
     maxBuffer: 1024 * 1024,
   })
   const entries = output.toString('utf8').split('\0').filter(Boolean).map((entry) => {
@@ -23,8 +40,10 @@ function inventory(repo, commit) {
     if (!match || match[1] !== '100644' || match[2] !== 'blob') {
       throw new Error('Canonical tests must contain regular files only')
     }
+    if (match[4]==='tests/database/migrations.test.mjs') return null
+    if (!protectedPath(match[4])) throw new Error('Unsupported canonical database file')
     return `${match[4]} ${match[3]}`
-  }).sort()
+  }).filter(Boolean).sort()
   if (!entries.length) throw new Error('Canonical test tree is empty')
   return entries
 }
@@ -67,7 +86,7 @@ export function assertProposalOnlyTests(qaRepo, acceptedCommit, proposalCommit) 
   const paths = execFileSync('git', ['-C', qaRepo, 'diff', '--name-only', '--no-renames', '-z', acceptedCommit, proposalCommit], {
     maxBuffer: 1024 * 1024,
   }).toString('utf8').split('\0').filter(Boolean)
-  if (!paths.length || paths.some((path) => !path.startsWith(ROOT))) {
+  if (!paths.length || paths.some((path) => !protectedPath(path))) {
     throw new Error('QA proposal changes the runner or files outside canonical tests')
   }
   inventory(qaRepo, proposalCommit)

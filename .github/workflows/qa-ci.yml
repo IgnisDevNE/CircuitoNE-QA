@@ -20,3 +20,26 @@ jobs:
         with:
           node-version: '22.23.2'
       - run: node --test tests/*.test.mjs
+
+  database-harness:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: IgnisDevNE/CircuitoNE
+          ref: 5791d630414613dd43e76ddfe015bb3067fdc45e # PR125 synthetic schema fixture
+          path: fixture
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24.21.0'
+      - name: Prepare fixed oracle fixture and exercise real containers
+        run: |
+          mkdir -p suite/tests
+          cp -r fixture/tests/database suite/tests/database
+          rm suite/tests/database/migrations.test.mjs
+          node scripts/database.mjs fixture 5791d630414613dd43e76ddfe015bb3067fdc45e suite

@@ -8,11 +8,11 @@ const S = 'b'.repeat(40)
 const expected = { sourceSha: SHA, sourceMainSha: S, sourcePr: 54, runId: 123, suiteSha: S, acceptedSha: S, sourceCiConclusion: 'success' }
 
 test('publishes success only for the exact current source and suite', () => {
-  assert.equal(decideConclusion(expected, expected, 'success'), 'success')
-  assert.equal(decideConclusion(expected, { ...expected, sourceSha: 'c'.repeat(40) }, 'success'), 'failure')
+  assert.equal(decideConclusion(expected, expected, 'success', 'success'), 'success')
+  assert.equal(decideConclusion(expected, { ...expected, sourceSha: 'c'.repeat(40) }, 'success', 'success'), 'failure')
   assert.equal(decideConclusion(expected, { ...expected, acceptedSha: 'c'.repeat(40) }, 'success'), 'failure')
   assert.equal(decideConclusion(expected, { ...expected, sourceCiConclusion: 'failure' }, 'success'), 'failure')
-  assert.equal(decideConclusion(expected, expected, 'failure'), 'failure')
+  assert.equal(decideConclusion(expected, expected, 'failure', 'success'), 'failure')
 })
 
 test('a failed resolution reports failure only on the trusted source PR commit', async () => {
@@ -61,4 +61,9 @@ test('a failed resolution reports failure only on the trusted source PR commit',
     /exact open source PR/,
   )
   assert.equal(published.length, 1)
+})
+
+test('browser green cannot hide SQL failure, cancellation, skip or missing result',()=>{
+  for(const database of ['failure','cancelled','skipped',undefined]) assert.equal(decideConclusion(expected,expected,'success',database),'failure')
+  assert.equal(decideConclusion(expected,expected,'success','success'),'success')
 })

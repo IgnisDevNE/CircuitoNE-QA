@@ -145,3 +145,40 @@ test('refreshes a proposal whose base is no longer the accepted suite', () => {
     rmSync(candidate.root, { recursive: true, force: true })
   }
 })
+
+test('SQL assertions are protected alongside browser tests', () => {
+  const files={'tests/e2e/a.spec.ts':'test()','tests/database/rules.sql':'select required_rule();'}
+  const qa=repository(files), candidate=repository(files)
+  try {
+    assert.doesNotThrow(()=>assertCanonicalTests(candidate.root,candidate.sha,qa.root,qa.sha))
+    writeFileSync(join(candidate.root,'tests/database/rules.sql'),'select true;')
+    git(candidate.root,'add','.'); git(candidate.root,'commit','-qm','weaken SQL')
+    assert.equal(needsProposal(candidate.root,git(candidate.root,'rev-parse','HEAD'),qa.root,qa.sha),true)
+    assert.throws(()=>assertCanonicalTests(candidate.root,git(candidate.root,'rev-parse','HEAD'),qa.root,qa.sha),/canonical/i)
+  } finally {rmSync(qa.root,{recursive:true,force:true});rmSync(candidate.root,{recursive:true,force:true})}
+})
+
+test('a reviewed SQL proposal cannot replace the database harness', () => {
+  const qa=repository({'tests/e2e/a.spec.ts':'test()','tests/database/rules.sql':'select rule();'})
+  try {
+    writeFileSync(join(qa.root,'tests/database/rules.sql'),'select new_rule();')
+    git(qa.root,'add','.');git(qa.root,'commit','-qm','new SQL oracle')
+    assert.doesNotThrow(()=>assertProposalOnlyTests(qa.root,qa.sha,git(qa.root,'rev-parse','HEAD')))
+    writeFileSync(join(qa.root,'tests/database/migrations.test.mjs'),'process.exit(0)')
+    git(qa.root,'add','.');git(qa.root,'commit','-qm','replace local harness')
+    assert.throws(()=>assertProposalOnlyTests(qa.root,qa.sha,git(qa.root,'rev-parse','HEAD')),/runner|outside/)
+  } finally {rmSync(qa.root,{recursive:true,force:true})}
+})
+
+test('state v2 binds the database tree; v1 cannot silently contain SQL',()=>{
+  const qa=repository({'tests/e2e/a.spec.ts':'test()','tests/database/rules.sql':'select rule();','.qa/state.json':'{}'})
+  try {
+    const test_tree=git(qa.root,'rev-parse',`${qa.sha}:tests/e2e`)
+    const database_tree=git(qa.root,'rev-parse',`${qa.sha}:tests/database`)
+    const save=state=>{writeFileSync(join(qa.root,'.qa/state.json'),JSON.stringify(state));git(qa.root,'add','.');git(qa.root,'commit','-qm','state');return git(qa.root,'rev-parse','HEAD')}
+    assert.throws(()=>assertAcceptedState(qa.root,save({test_tree})),/SQL|version|database/i)
+    assert.doesNotThrow(()=>assertAcceptedState(qa.root,save({schema_version:2,test_tree,database_tree})))
+    writeFileSync(join(qa.root,'tests/database/rules.sql'),'select true;');git(qa.root,'add','.');git(qa.root,'commit','-qm','weaken')
+    assert.throws(()=>assertAcceptedState(qa.root,git(qa.root,'rev-parse','HEAD')),/database|tree/i)
+  } finally {rmSync(qa.root,{recursive:true,force:true})}
+})

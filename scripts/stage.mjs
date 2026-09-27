@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { qaAppToken } from './app-token.mjs'
-import { assertAcceptedState, needsProposal } from './integrity.mjs'
+import { assertAcceptedState, needsProposal, replaceCanonicalTests } from './integrity.mjs'
 
 const QA = 'IgnisDevNE/CircuitoNE-QA'
 const QA_REPOSITORY_ID = 1382208661
@@ -87,8 +87,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     if (changed) {
       git(acceptedDir, 'switch', '-C', branch, acceptedSha)
       git(acceptedDir, 'fetch', '--no-tags', 'https://github.com/IgnisDevNE/CircuitoNE.git', candidateSha)
-      git(acceptedDir, 'rm', '-r', '-q', '--', 'tests/e2e')
-      git(acceptedDir, 'checkout', candidateSha, '--', 'tests/e2e')
+      replaceCanonicalTests(acceptedDir,candidateSha)
       git(acceptedDir, '-c', 'user.name=github-actions[bot]', '-c', 'user.email=41898282+github-actions[bot]@users.noreply.github.com',
         'commit', '-qm', `Propose canonical tests for CircuitoNE #${sourcePrText}`)
       if (previous) {
