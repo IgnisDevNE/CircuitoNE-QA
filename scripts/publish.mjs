@@ -7,9 +7,9 @@ export const SOURCE = 'IgnisDevNE/CircuitoNE'
 const QA = 'IgnisDevNE/CircuitoNE-QA'
 export const SOURCE_REPOSITORY_ID = 1380574734
 
-export function decideConclusion(expected, current, testResult) {
+export function decideConclusion(expected, current, testResult, databaseResult) {
   const fields = ['sourceSha', 'sourceMainSha', 'sourcePr', 'runId', 'suiteSha', 'acceptedSha']
-  return current.sourceCiConclusion === 'success' && testResult === 'success' &&
+  return current.sourceCiConclusion === 'success' && testResult === 'success' && databaseResult === 'success' &&
     fields.every((field) => expected[field] === current[field]) ? 'success' : 'failure'
 }
 
@@ -40,7 +40,7 @@ async function currentAcceptance(expected, token) {
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   try {
-    const [runId, sourceSha, sourceMainSha, sourcePr, suiteSha, acceptedSha, testResult] = process.argv.slice(2)
+    const [runId, sourceSha, sourceMainSha, sourcePr, suiteSha, acceptedSha, testResult, databaseResult] = process.argv.slice(2)
     if (!/^[0-9a-f]{40,64}$/.test(sourceSha || '') || !/^[0-9a-f]{40,64}$/.test(sourceMainSha || '') ||
         !/^[0-9a-f]{40,64}$/.test(suiteSha || '') ||
         !/^[0-9a-f]{40,64}$/.test(acceptedSha || '') || !/^[1-9][0-9]*$/.test(runId || '') ||
@@ -49,7 +49,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     let conclusion = 'failure'
     try {
       const current = await currentAcceptance(expected, process.env.GITHUB_TOKEN)
-      conclusion = decideConclusion(expected, current, testResult)
+      conclusion = decideConclusion(expected, current, testResult, databaseResult)
     } catch (error) {
       console.error(`QA revalidation failed: ${error.message}`)
     }
@@ -57,7 +57,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     await request(`/repos/${SOURCE}/check-runs`, token, 'POST', {
       name: 'canonical-acceptance', head_sha: sourceSha, status: 'completed', conclusion,
       details_url: process.env.QA_RUN_URL,
-      external_id: `run=${runId};source=${sourceSha};suite=${suiteSha};accepted=${acceptedSha};workflow=${process.env.GITHUB_SHA}`,
+      external_id: `run=${runId};source=${sourceSha};suite=${suiteSha};accepted=${acceptedSha};workflow=${process.env.GITHUB_SHA};scope=2`,
       output: {
         title: conclusion === 'success' ? 'Canonical acceptance passed' : 'Canonical acceptance failed',
         summary: `Source PR #${sourcePr}; candidate ${sourceSha}; accepted suite ${acceptedSha}; tested suite ${suiteSha}; QA run ${process.env.GITHUB_RUN_ID}.`,

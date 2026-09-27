@@ -145,9 +145,42 @@ jobs:
           node scripts/results.mjs "$RUNNER_TEMP/canonical-results.json"
           exit "$status"
 
+  database:
+    if: ${{ needs.resolve.outputs.alreadyPromoted != 'true' }}
+    needs: resolve
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: runner
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.resolve.outputs.suiteSha }}
+          path: suite
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: IgnisDevNE/CircuitoNE
+          ref: ${{ needs.resolve.outputs.sourceSha }}
+          path: candidate
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24.21.0'
+      - name: Verify approved SQL and browser trees
+        run: node runner/scripts/integrity.mjs candidate '${{ needs.resolve.outputs.sourceSha }}' suite '${{ needs.resolve.outputs.suiteSha }}' '${{ needs.resolve.outputs.acceptedSha }}' '${{ needs.resolve.outputs.sourceMainSha }}'
+      - name: Rebuild and exercise the schema in isolated containers
+        run: node runner/scripts/database.mjs candidate '${{ needs.resolve.outputs.sourceSha }}' suite
+
   publish:
     if: ${{ always() && inputs.mode == 'accept' }}
-    needs: [resolve, test]
+    needs: [resolve, test, database]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -172,14 +205,14 @@ jobs:
           QA_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           if [[ '${{ needs.resolve.result }}' == 'success' ]]; then
-            node runner/scripts/publish.mjs '${{ needs.resolve.outputs.runId }}' '${{ needs.resolve.outputs.sourceSha }}' '${{ needs.resolve.outputs.sourceMainSha }}' '${{ needs.resolve.outputs.sourcePr }}' '${{ needs.resolve.outputs.suiteSha }}' '${{ needs.resolve.outputs.acceptedSha }}' '${{ needs.test.result }}'
+            node runner/scripts/publish.mjs '${{ needs.resolve.outputs.runId }}' '${{ needs.resolve.outputs.sourceSha }}' '${{ needs.resolve.outputs.sourceMainSha }}' '${{ needs.resolve.outputs.sourcePr }}' '${{ needs.resolve.outputs.suiteSha }}' '${{ needs.resolve.outputs.acceptedSha }}' '${{ needs.test.result }}' '${{ needs.database.result }}'
           else
             node runner/scripts/publish-failure.mjs "$SOURCE_RUN_ID"
           fi
 
   promote:
-    if: ${{ inputs.mode == 'promote' && needs.test.result == 'success' }}
-    needs: [resolve, test]
+    if: ${{ inputs.mode == 'promote' && needs.test.result == 'success' && needs.database.result == 'success' }}
+    needs: [resolve, test, database]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
