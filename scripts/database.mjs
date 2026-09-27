@@ -7,8 +7,8 @@ import { fileURLToPath } from 'node:url'
 import { setTimeout } from 'node:timers/promises'
 
 // Official images used by the source CI, pinned independently by QA.
-export const PG='public.ecr.aws/supabase/postgres@sha256:16c0944c77885446d4f2ebbb2191b357feeb3b1295bde2fb1978c113129dbeb4' // 17.6.1.167
-const AUTH='public.ecr.aws/supabase/gotrue@sha256:7e813221b93fbf54b515036438550e483bfaf057b9db52fe9bc1ce91c47e817e' // v2.196.0
+export const PG='docker.io/supabase/postgres@sha256:6942962433a569e87f228b4d4ab7e11db5deca64e43babb3a038443ad6c4f1bb' // 17.6.1.167
+const AUTH='docker.io/supabase/gotrue@sha256:c0c25187a6b835e65a6f6e6c6b39d090e832d40e6de5186f2c038e0411944232' // v2.196.0
 const NODE='docker.io/library/node@sha256:0e0ff40c39bc087845bfb27465a0df4ea419520094bc35842ff83dd8cbe6f9b6' // 24.21.0 bookworm slim
 const restrictions=['--read-only','--cap-drop','ALL','--security-opt','no-new-privileges','--pids-limit','128','--cpus','2']
 
