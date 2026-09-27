@@ -74,9 +74,11 @@ test('approval workflow runs trusted main with no secrets and dispatches canonic
   assert.doesNotMatch(workflow, /secrets\./)
 })
 
-test('promotion closes its exact proposal only after promotion succeeds', () => {
+test('promotion closes its exact proposal after success or confirmed idempotent recovery', () => {
   const workflow = yaml('../.github/workflows/canonical.yml')
-  assert.match(workflow, /close-proposal:\n\s+if: \$\{\{ inputs\.mode == 'promote' && needs\.promote\.result == 'success' && needs\.resolve\.outputs\.proposalPr != '' \}\}/)
+  assert.match(workflow, /close-proposal:\n\s+if: \$\{\{ always\(\) && inputs\.mode == 'promote' && needs\.resolve\.result == 'success' && \(needs\.promote\.result == 'success' \|\| needs\.resolve\.outputs\.alreadyPromoted == 'true'\) && needs\.resolve\.outputs\.proposalPr != '' \}\}/)
+  assert.match(workflow,/closureAcceptedSha: \$\{\{ steps\.proposal\.outputs\.closureAcceptedSha \}\}/)
+  assert.match(workflow.split('close-proposal:')[1],/needs\.resolve\.outputs\.closureAcceptedSha/)
   assert.match(workflow.split('close-proposal:')[1], /ref: \$\{\{ github\.sha \}\}/)
   assert.match(workflow, /pull-requests: write[\s\S]*node runner\/scripts\/close-promoted\.mjs/)
   assert.doesNotMatch(workflow.split('close-proposal:')[1], /secrets\./)

@@ -36,6 +36,19 @@ export function acceptedState(state, mode, sourceSha, sourceMainSha, sourcePr) {
   throw new Error('Source main has advanced beyond the promoted QA state')
 }
 
+export async function choosePromotionSuite(state, sourcePr, acceptedSha, alreadyPromoted, getJson) {
+  const previous = alreadyPromoted ? state.previous_accepted_sha : acceptedSha
+  if (alreadyPromoted && (state.promoted_source_pr !== sourcePr || !sha(state.promoted_suite_sha))) {
+    throw new Error('Recorded promotion differs from retry')
+  }
+  const proposal = await chooseApprovedSuite(sourcePr, previous, getJson)
+  if (alreadyPromoted && proposal.proposalPr !== null && proposal.suiteSha !== state.promoted_suite_sha) {
+    throw new Error('Proposal differs from recorded promotion')
+  }
+  return { suiteSha: alreadyPromoted ? state.promoted_suite_sha : proposal.suiteSha,
+    proposalPr: proposal.proposalPr, closureAcceptedSha: previous }
+}
+
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   try {
     const [sourcePrText, sourceMainSha, acceptedSha, acceptedDir, mode, sourceSha] = process.argv.slice(2)
@@ -52,9 +65,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
       if (!response.ok) throw new Error(`GitHub API rejected QA lookup (HTTP ${response.status})`)
       return response.json()
     }
-    const result = status.alreadyPromoted
-      ? { suiteSha: acceptedSha, proposalPr: null }
-      : await chooseApprovedSuite(Number(sourcePrText), acceptedSha, getJson)
+    const result = await choosePromotionSuite(state,Number(sourcePrText),acceptedSha,status.alreadyPromoted,getJson)
     for (const [name, value] of Object.entries(result)) appendFileSync(process.env.GITHUB_OUTPUT, `${name}=${value ?? ''}\n`)
     appendFileSync(process.env.GITHUB_OUTPUT, `alreadyPromoted=${status.alreadyPromoted}\n`)
     console.log(`Resolved approved QA suite ${result.suiteSha}.`)
