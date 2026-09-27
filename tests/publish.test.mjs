@@ -61,6 +61,18 @@ test('a failed resolution reports failure only on the trusted source PR commit',
     /exact open source PR/,
   )
   assert.equal(published.length, 1)
+
+  // A later push must not hide the failure, or attach it to the new head.
+  const staleRun = { ...run, pull_requests: [{ number: 61 }] }
+  const advancedPulls = [{ ...pulls[0], head: { ...pulls[0].head, sha: S } }]
+  await reportFailedResolution('123', check.details_url,
+    async (path) => path.endsWith('/actions/runs/123') ? staleRun : advancedPulls,
+    async (payload) => published.push(payload))
+  assert.equal(published.length, 2)
+  assert.equal(published[1].head_sha, SHA)
+  assert.notEqual(published[1].head_sha, S)
+  assert.equal(published[1].conclusion, 'failure')
+  assert.match(published[1].output.summary, /source, base promotion or test approval/)
 })
 
 test('browser green cannot hide SQL failure, cancellation, skip or missing result',()=>{

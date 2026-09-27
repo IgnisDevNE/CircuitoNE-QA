@@ -13,8 +13,9 @@ export function identifyFailedSource(runId, run, pulls) {
       !run.head_branch || !Number.isFinite(Date.parse(run.created_at)) || !Array.isArray(run.pull_requests)) {
     throw new Error('Not a trusted source PR CI run')
   }
-  const matches = Array.isArray(pulls) && pulls.filter((pr) => pr.state === 'open' &&
-    pr.head?.sha === run.head_sha && pr.head.ref === run.head_branch &&
+  const matches = pulls.filter((pr) => pr.state === 'open' &&
+    (pr.head?.sha === run.head_sha || run.pull_requests.some((linked) => linked.number === pr.number)) &&
+    pr.head?.ref === run.head_branch &&
     pr.head.repo?.full_name === SOURCE && pr.base?.ref === 'main' &&
     Number.isSafeInteger(pr.number) && Number.isFinite(Date.parse(pr.created_at)) &&
     Date.parse(pr.created_at) <= Date.parse(run.created_at) &&
@@ -29,7 +30,7 @@ export function failureCheck(sourceSha, runId, url) {
     details_url: url, external_id: `run=${runId};source=${sourceSha};result=resolve-failed`,
     output: {
       title: 'Canonical acceptance could not start',
-      summary: `QA could not resolve source CI run ${runId}. See the linked QA run for the error.`,
+      summary: `Canonical acceptance did not start for source CI run ${runId}, commit ${sourceSha}. Check source, base promotion or test approval in the linked QA run.`,
     },
   }
 }
