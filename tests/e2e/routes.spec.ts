@@ -76,8 +76,15 @@ test('hidrata a agenda com o relógio do servidor mesmo se o navegador estiver e
   await page.clock.setFixedTime(new Date('2030-01-01T12:00:00.000Z'))
   const errors: string[] = []
   page.on('pageerror', (error) => errors.push(error.message))
-  await page.goto('/eventos')
-  await expect(page.getByText('PORTO NOTURNO — TECHNO NA ORLA').first()).toBeVisible()
+  const response = await page.goto('/eventos')
+  expect(response?.status()).toBe(200)
+  const serverEvents = await page.evaluate(
+    (html) => [...new DOMParser().parseFromString(html, 'text/html').querySelectorAll('main li h3')]
+      .map((heading) => heading.textContent?.trim()),
+    await response!.text(),
+  )
+  expect(serverEvents).toContain('PORTO NOTURNO — TECHNO NA ORLA')
+  await expect(page.locator('main li h3')).toHaveText(serverEvents)
   expect(errors).toEqual([])
 })
 
