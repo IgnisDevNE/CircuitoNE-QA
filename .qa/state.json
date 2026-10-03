@@ -2,11 +2,11 @@
   "schema_version": 2,
   "test_tree": "8c688874160302912ee8d2565a2b334cf8464521",
   "database_tree": "acbcc0de773710e658557ce3c3ddfd99c252f5e1",
-  "source_main_sha": "ea76c8a3bb1cd7cb5748a84d07cd4bea8f005c0f",
-  "promoted_source_pr": 150,
-  "promoted_suite_sha": "d69c2cd18f1fd767a5b8477b241a1c74f722a885",
-  "previous_accepted_sha": "f322d423442f40e864ff982e476974e2ecabfb98",
+  "source_main_sha": "1e157563f71bc9ff30f2345f90f1e1f0c88e7857",
+  "promoted_source_pr": 152,
+  "promoted_suite_sha": "2494147e8954e153524ccce52875886fde2740bd",
+  "previous_accepted_sha": "2494147e8954e153524ccce52875886fde2740bd",
   "acceptance_workflow_sha": "ef9304e520b50927950173e5cc4aa9cfae6d999c",
   "promotion_workflow_sha": "ef9304e520b50927950173e5cc4aa9cfae6d999c",
-  "source_run_id": 37084487069
+  "source_run_id": 37088432554
 }
